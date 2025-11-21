@@ -15,7 +15,7 @@ class ImageSubscriber(Node):
 
         self.subscription = self.create_subscription(
             Image,  # use CompressedImage or Image
-            "/manual_image_rect",
+            "/image_raw",
             self.listener_callback,
             10,
         )
@@ -106,55 +106,56 @@ class ImageSubscriber(Node):
             else:
                 robot_pos = triangulation_2p(detections, distances)
 
-        print(f"robot_pos: {robot_pos}")
-        self.kf.predict()
-        filtered_pos = self.kf.update(robot_pos)
+            print(f"robot_pos: {robot_pos}")
 
-        self.get_logger().info(
-            f"Filtered position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}"
-        )
+            self.kf.predict()
+            filtered_pos = self.kf.update(robot_pos)
 
-        ### curling algorithm ###
-        twist = Twist()
+            self.get_logger().info(
+                f"Filtered position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}"
+            )
 
-        ducky_pos = self.target
-        # calculate the angle between the rover and ducky.
-        rotation = np.arctan2(ducky_pos[1] - robot_pos[1], ducky_pos[0] - robot_pos[0])
-        # calculate how much the rover needs to turn and normalize (in radians)
-        z_error = rotation - robot_pos[2]
-        z_error = (z_error + np.pi) % (2 * np.pi) - np.pi
+        # ### curling algorithm ###
+        # twist = Twist()
 
-        # check how far away you are (in m)
-        distance_to_ducky = np.sqrt(
-            (robot_pos[0] - ducky_pos[0]) ** 2 + (robot_pos[1] - ducky_pos[1]) ** 2
-        )
+        # ducky_pos = self.target
+        # # calculate the angle between the rover and ducky.
+        # rotation = np.arctan2(ducky_pos[1] - robot_pos[1], ducky_pos[0] - robot_pos[0])
+        # # calculate how much the rover needs to turn and normalize (in radians)
+        # z_error = rotation - robot_pos[2]
+        # z_error = (z_error + np.pi) % (2 * np.pi) - np.pi
 
-        # if you are close, reduce speed to be more precise
-        if distance_to_ducky < 0.5:
-            speed = 0.1
-            turning = 0.3
-        else:
-            speed = 0.3
-            turning = 0.5
+        # # check how far away you are (in m)
+        # distance_to_ducky = np.sqrt(
+        #     (robot_pos[0] - ducky_pos[0]) ** 2 + (robot_pos[1] - ducky_pos[1]) ** 2
+        # )
 
-        if z_error < 0.3:
-            # drive fowards if in the right direction
-            twist.linear.x = speed
-            twist.angular.z = 0.0
-        else:
-            twist.linear.x = 0
-            # otherwise turn to the right direction
-            if z_error > 0.3:
-                twist.angular.z = turning
-            else:
-                twist.angular.z = -turning
+        # # if you are close, reduce speed to be more precise
+        # if distance_to_ducky < 0.5:
+        #     speed = 0.1
+        #     turning = 0.3
+        # else:
+        #     speed = 0.3
+        #     turning = 0.5
 
-        if distance_to_ducky < 0.10:
-            # if within 10 cm of the ducky, stop
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
+        # if z_error < 0.3:
+        #     # drive fowards if in the right direction
+        #     twist.linear.x = speed
+        #     twist.angular.z = 0.0
+        # else:
+        #     twist.linear.x = 0
+        #     # otherwise turn to the right direction
+        #     if z_error > 0.3:
+        #         twist.angular.z = turning
+        #     else:
+        #         twist.angular.z = -turning
 
-            cv2.waitKey(1)
+        # if distance_to_ducky < 0.10:
+        #     # if within 10 cm of the ducky, stop
+        #     twist.linear.x = 0.0
+        #     twist.angular.z = 0.0
+
+        cv2.waitKey(1)
 
 
 def preprocess_image(color_image):

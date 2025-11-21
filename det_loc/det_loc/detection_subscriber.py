@@ -199,7 +199,7 @@ class ImageSubscriber(Node):
                 center_error
             )
 
-        # Localization and navigation (if enabled)
+        # # Localization and navigation (if enabled)
         if self.enable_localization and detections:
             self._process_localization(detections)
 
@@ -210,9 +210,11 @@ class ImageSubscriber(Node):
     def _process_localization(self, detections):
         """Process localization and optionally navigation."""
         # Measure distances to tags
+        # Note: scale=1.0 because detections are already scaled back to original coordinates
         distances = self.distance_measure.measure_distances(
             detections,
-            self.get_logger()
+            scale=1.0,
+            logger=self.get_logger()
         )
 
         # Triangulate position
@@ -222,19 +224,22 @@ class ImageSubscriber(Node):
         elif len(detections) >= 2:
             robot_pos = Triangulation.triangulate_2p(detections, distances)
 
-        if robot_pos is None:
+        # Check if triangulation succeeded
+        if robot_pos is None or robot_pos == [0.0, 0.0]:
             return
 
         # Apply Kalman filter
         self.kf.predict()
         filtered_pos = self.kf.update(robot_pos[:2])
 
-        # Update robot position with filtered values
-        self.robot_pos = [filtered_pos[0], filtered_pos[1], robot_pos[2]]
+        # Update robot position with filtered values (add rotation if available)
+        if len(robot_pos) >= 3:
+            self.robot_pos = [filtered_pos[0], filtered_pos[1], robot_pos[2]]
+        else:
+            self.robot_pos = [filtered_pos[0], filtered_pos[1], 0.0]
 
         self.get_logger().info(
-            f"Robot position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}, "
-            f"θ={robot_pos[2]:.2f}"
+            f"Robot position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}"
         )
 
         # Navigate to target (if enabled)
@@ -243,7 +248,8 @@ class ImageSubscriber(Node):
 
     def _navigate_to_target(self):
         """Simple navigation algorithm to move towards target."""
-        if self.robot_pos is None:
+        if self.robot_pos is None or len(self.robot_pos) < 3:
+            self.get_logger().warning("Cannot navigate: robot position not available")
             return
 
         twist = Twist()
@@ -273,6 +279,7 @@ class ImageSubscriber(Node):
             # Stop when close enough (10 cm)
             twist.linear.x = 0.0
             twist.angular.z = 0.0
+            self.get_logger().info("Target reached!")
         elif abs(angle_error) < 0.3:
             # Drive forward if facing target
             twist.linear.x = speed

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<CycloneDDS>
+  <Domain>
+    <General>
+      <NetworkInterfaceAddress>auto</NetworkInterfaceAddress>
+      <AllowMulticast>false</AllowMulticast>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <Peers>
+        <Peer address="10.0.80.9"/>
+      </Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

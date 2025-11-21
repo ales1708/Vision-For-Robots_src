@@ -14,6 +14,7 @@ from det_loc.utils import (
     DistanceMeasurement,
     Triangulation,
     KalmanFilter2D,
+    DynamicTagTracker,
 )
 
 class PIDController:
@@ -107,6 +108,18 @@ class ImageSubscriber(Node):
             self.kf = KalmanFilter2D(dt=0.05)
             self.robot_pos = None
 
+            # Dynamic tag tracking configuration
+            tracker_config = {
+                "num_tags_to_track": 2,
+                "update_threshold_rad": 0.1,  # ~5.7 degrees
+                "camera_offset": 0.0,
+                "smoothing_factor": 0.3,
+            }
+            self.tag_tracker = DynamicTagTracker(
+                self.camera,
+                config=tracker_config
+            )
+
             if self.enable_navigation:
                 self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
                 self.target = [4.5, 3.0]  # Default target position [x, y]
@@ -140,6 +153,11 @@ class ImageSubscriber(Node):
             f"({self.view_tracker.best_view['num_tags']} tags, "
             f"error={self.view_tracker.best_view['center_error']:.1f}px)"
         )
+
+        # Enable dynamic tag tracking if localization is active
+        if self.enable_localization and hasattr(self, 'tag_tracker'):
+            self.tag_tracker.enable()
+            self.get_logger().info("Dynamic tag tracking enabled")
 
     def scanning_step(self):
         """Main scanning loop: find ideal camera position for tag detection."""
@@ -236,6 +254,10 @@ class ImageSubscriber(Node):
             f"Robot position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}, "
             f"θ={robot_pos[2]:.2f}"
         )
+
+        # Update dynamic tag tracking (if scan is locked and driving)
+        if self.scan_locked and hasattr(self, 'tag_tracker'):
+            self.tag_tracker.update(self.robot_pos, self.get_logger())
 
         # Navigate to target (if enabled)
         if self.enable_navigation and self.scan_locked:

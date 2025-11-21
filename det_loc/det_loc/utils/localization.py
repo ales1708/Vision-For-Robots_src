@@ -28,6 +28,107 @@ FIELD_WIDTH = 9.0
 FIELD_HEIGHT = 6.0
 
 
+def find_closest_tags(robot_position, tag_positions=None, num_tags=2):
+    """
+    Find the N closest AprilTags to the robot's current position.
+    
+    Args:
+        robot_position: [x, y] or [x, y, rotation] robot position in meters
+        tag_positions: Optional dict of tag positions (uses APRILTAG_POSITIONS if None)
+        num_tags: Number of closest tags to return (default: 2)
+        
+    Returns:
+        List of tuples [(tag_id, distance, position), ...] sorted by distance
+        Returns empty list if robot_position is invalid
+    """
+    if robot_position is None or len(robot_position) < 2:
+        return []
+    
+    positions = tag_positions or APRILTAG_POSITIONS
+    robot_x, robot_y = robot_position[0], robot_position[1]
+    
+    # Calculate distances to all tags
+    tag_distances = []
+    for tag_name, tag_pos in positions.items():
+        # Extract tag ID (e.g., "tag1" -> 1)
+        tag_id = int(tag_name.replace("tag", ""))
+        
+        # Calculate Euclidean distance
+        dx = tag_pos[0] - robot_x
+        dy = tag_pos[1] - robot_y
+        distance = np.sqrt(dx**2 + dy**2)
+        
+        tag_distances.append((tag_id, distance, tag_pos))
+    
+    # Sort by distance and return top N
+    tag_distances.sort(key=lambda x: x[1])
+    return tag_distances[:num_tags]
+
+
+def calculate_tag_centroid(robot_position, closest_tags):
+    """
+    Calculate the centroid (average position) of the closest tags.
+    
+    Args:
+        robot_position: [x, y, rotation] robot position
+        closest_tags: List of tuples [(tag_id, distance, [x, y]), ...]
+        
+    Returns:
+        [x, y] centroid position or None if invalid input
+    """
+    if not closest_tags or robot_position is None:
+        return None
+    
+    # Calculate average position
+    x_sum = sum(tag[2][0] for tag in closest_tags)
+    y_sum = sum(tag[2][1] for tag in closest_tags)
+    
+    centroid_x = x_sum / len(closest_tags)
+    centroid_y = y_sum / len(closest_tags)
+    
+    return [centroid_x, centroid_y]
+
+
+def calculate_pan_to_tags(robot_position, closest_tags, camera_offset=0.0):
+    """
+    Calculate the pan angle needed to center the closest tags in camera view.
+    
+    Args:
+        robot_position: [x, y, rotation] robot position (rotation in radians)
+        closest_tags: List of tuples [(tag_id, distance, [x, y]), ...]
+        camera_offset: Camera mounting offset from robot heading (radians, default: 0.0)
+        
+    Returns:
+        Pan angle in radians (relative to robot heading) or None if invalid
+    """
+    if robot_position is None or len(robot_position) < 3:
+        return None
+    
+    if not closest_tags:
+        return None
+    
+    robot_x, robot_y, robot_heading = robot_position
+    
+    # Calculate centroid of closest tags
+    centroid = calculate_tag_centroid(robot_position, closest_tags)
+    if centroid is None:
+        return None
+    
+    # Calculate angle from robot to tag centroid (in world frame)
+    dx = centroid[0] - robot_x
+    dy = centroid[1] - robot_y
+    angle_to_centroid = np.arctan2(dy, dx)
+    
+    # Calculate pan angle relative to robot heading
+    # Pan angle = (angle to target) - (robot heading) - (camera offset)
+    pan_angle = angle_to_centroid - robot_heading - camera_offset
+    
+    # Normalize to [-π, π]
+    pan_angle = (pan_angle + np.pi) % (2 * np.pi) - np.pi
+    
+    return pan_angle
+
+
 class DistanceMeasurement:
     """Handles distance measurement to AprilTags using camera calibration."""
 
@@ -247,6 +348,146 @@ class Triangulation:
         rotation = np.mean(positions_array[:, 2])
 
         return [x, y, rotation]
+
+
+class DynamicTagTracker:
+    """
+    Manages dynamic camera tracking of closest AprilTags while driving.
+    
+    This class continuously updates camera pan to keep the two closest tags
+    in view for optimal localization accuracy.
+    """
+    
+    def __init__(self, camera_controller, tag_positions=None, config=None):
+        """
+        Initialize dynamic tag tracker.
+        
+        Args:
+            camera_controller: CameraController instance for pan control
+            tag_positions: Optional dict of tag positions (uses APRILTAG_POSITIONS if None)
+            config: Optional dict with configuration parameters
+        """
+        self.camera = camera_controller
+        self.tag_positions = tag_positions or APRILTAG_POSITIONS
+        
+        # Configuration
+        cfg = config or {}
+        self.num_tags_to_track = cfg.get("num_tags_to_track", 2)
+        self.update_threshold_rad = cfg.get("update_threshold_rad", 0.1)  # ~5.7 degrees
+        self.camera_offset = cfg.get("camera_offset", 0.0)
+        self.smoothing_factor = cfg.get("smoothing_factor", 0.3)  # For exponential smoothing
+        
+        # State
+        self.last_pan_angle = None
+        self.current_closest_tags = None
+        self.enabled = False
+    
+    def enable(self):
+        """Enable dynamic tracking."""
+        self.enabled = True
+    
+    def disable(self):
+        """Disable dynamic tracking."""
+        self.enabled = False
+    
+    def update(self, robot_position, logger=None):
+        """
+        Update camera pan to track closest tags.
+        
+        Args:
+            robot_position: [x, y, rotation] current robot position
+            logger: Optional ROS logger for debug messages
+            
+        Returns:
+            True if pan was updated, False otherwise
+        """
+        if not self.enabled or robot_position is None:
+            return False
+        
+        # Find closest tags
+        closest_tags = find_closest_tags(
+            robot_position, 
+            self.tag_positions, 
+            self.num_tags_to_track
+        )
+        
+        if not closest_tags:
+            if logger:
+                logger.warning("No tags found for dynamic tracking")
+            return False
+        
+        self.current_closest_tags = closest_tags
+        
+        # Calculate desired pan angle
+        desired_pan = calculate_pan_to_tags(
+            robot_position, 
+            closest_tags, 
+            self.camera_offset
+        )
+        
+        if desired_pan is None:
+            return False
+        
+        # Apply smoothing if we have a previous angle
+        if self.last_pan_angle is not None:
+            # Exponential smoothing: new = α * desired + (1-α) * old
+            desired_pan = (self.smoothing_factor * desired_pan + 
+                          (1 - self.smoothing_factor) * self.last_pan_angle)
+        
+        # Only update if change is significant
+        if self.last_pan_angle is None or abs(desired_pan - self.last_pan_angle) > self.update_threshold_rad:
+            # Clamp to camera limits
+            desired_pan = np.clip(desired_pan, self.camera.pan_min, self.camera.pan_max)
+            
+            # Update camera pan
+            self.camera.set_pan(desired_pan)
+            self.last_pan_angle = desired_pan
+            
+            if logger:
+                tag_ids = [tag[0] for tag in closest_tags]
+                logger.info(
+                    f"Tracking tags {tag_ids}: pan={desired_pan:.2f} rad "
+                    f"({np.degrees(desired_pan):.1f}°)"
+                )
+            
+            return True
+        
+        return False
+    
+    def get_tracked_tags(self):
+        """
+        Get currently tracked tag IDs.
+        
+        Returns:
+            List of tag IDs or empty list if not tracking
+        """
+        if self.current_closest_tags is None:
+            return []
+        return [tag[0] for tag in self.current_closest_tags]
+    
+    def get_tracking_info(self):
+        """
+        Get detailed tracking information.
+        
+        Returns:
+            Dict with tracking status or None if not tracking
+        """
+        if not self.enabled or self.current_closest_tags is None:
+            return None
+        
+        return {
+            "enabled": self.enabled,
+            "tracked_tags": [
+                {
+                    "id": tag[0],
+                    "distance": tag[1],
+                    "position": tag[2],
+                }
+                for tag in self.current_closest_tags
+            ],
+            "current_pan": self.last_pan_angle,
+            "current_pan_degrees": np.degrees(self.last_pan_angle) if self.last_pan_angle else None,
+        }
 
 
 class KalmanFilter2D:

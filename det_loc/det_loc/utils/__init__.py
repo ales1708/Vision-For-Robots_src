@@ -11,7 +11,11 @@ from .localization import (
     DistanceMeasurement,
     Triangulation,
     KalmanFilter2D,
+    DynamicTagTracker,
     APRILTAG_POSITIONS,
+    find_closest_tags,
+    calculate_tag_centroid,
+    calculate_pan_to_tags,
 )
 
 __all__ = [
@@ -23,6 +27,10 @@ __all__ = [
     'DistanceMeasurement',
     'Triangulation',
     'KalmanFilter2D',
+    'DynamicTagTracker',
     'APRILTAG_POSITIONS',
+    'find_closest_tags',
+    'calculate_tag_centroid',
+    'calculate_pan_to_tags',
 ]
 

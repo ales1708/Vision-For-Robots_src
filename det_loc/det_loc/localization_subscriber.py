@@ -14,8 +14,8 @@ class ImageSubscriber(Node):
         super().__init__("image_subscriber")
 
         self.subscription = self.create_subscription(
-            Image,  # use CompressedImage or Image
-            "/image_raw",
+            CompressedImage,  # use CompressedImage or Image
+            "/image_rect/compressed",
             self.listener_callback,
             10,
         )
@@ -72,9 +72,9 @@ class ImageSubscriber(Node):
     def listener_callback(self, data):
         """converts recieved images to cv2 images"""
 
-        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8")  # for Image
-        # np_arr = np.frombuffer(data.data, np.uint8)  # for CompressedImage
-        # frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # for CompressedImage
+        # frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8")  # for Image
+        np_arr = np.frombuffer(data.data, np.uint8)  # for CompressedImage
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # for CompressedImage
 
         # cv2.imshow("frame", frame)
 
@@ -108,12 +108,12 @@ class ImageSubscriber(Node):
 
             print(f"robot_pos: {robot_pos}")
 
-            self.kf.predict()
-            filtered_pos = self.kf.update(robot_pos)
+            # self.kf.predict()
+            # filtered_pos = self.kf.update(robot_pos)
 
-            self.get_logger().info(
-                f"Filtered position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}"
-            )
+            # self.get_logger().info(
+            #     f"Filtered position: x={filtered_pos[0]:.2f}, y={filtered_pos[1]:.2f}"
+            # )
 
         # ### curling algorithm ###
         # twist = Twist()
@@ -301,18 +301,18 @@ def get_rotation(ax, ay, bx, by, robot_x, robot_y):
 def triangulation_3p(detections, distances):
     """Performs triangulation to compute the position of the Robot with 3 points."""
     # get intersections between all three points
-    [ab_x, ab_y, ab_z] = triangulation_2p(detections[:2], distances[:2])
-    [ac_x, ac_y, ac_z] = triangulation_2p(
+    [ab_x, ab_y] = triangulation_2p(detections[:2], distances[:2])
+    [ac_x, ac_y] = triangulation_2p(
         [detections[0], detections[2]], [distances[0], distances[2]]
     )
-    [bc_x, bc_y, bc_z] = triangulation_2p(detections[1:3], distances[1:3])
+    [bc_x, bc_y] = triangulation_2p(detections[1:3], distances[1:3])
 
     # get mean of intersections and rotations
     x = np.mean(np.array([ab_x, ac_x, bc_x]))
     y = np.mean(np.array([ab_y, ac_y, bc_y]))
-    z = np.mean(np.array([ab_z, ac_z, bc_z]))
+    # z = np.mean(np.array([ab_z, ac_z, bc_z]))
 
-    return [x, y, z]
+    return [x, y]
 
 
 def triangulation_2p(detections, distances):
@@ -366,7 +366,7 @@ def triangulation_2p(detections, distances):
     else:
         robot_pos = [qx, qy]
 
-    robot_pos.append(get_rotation(ax, ay, bx, by, robot_pos[0], robot_pos[1]))
+    # robot_pos.append(get_rotation(ax, ay, bx, by, robot_pos[0], robot_pos[1]))
 
     return robot_pos
 

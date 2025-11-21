@@ -43,68 +43,106 @@ class PIDController:
 class ImageSubscriber(Node):
     def __init__(self):
         super().__init__("image_subscriber")
-        self.drive_state = False
-        self.initial_camera_position_found = False
-        self.pan_position = 0.0
-        self.initial_camera_timer = self.create_timer(1.0, self.starting_camera_position)
+
+        self.br = CvBridge()
+        self.detector = apriltag("tagStandard41h12")
 
         self.subscription = self.create_subscription(
-            Image,  # use CompressedImage or Image
-            "/image_raw",
+            CompressedImage,
+            "/image_raw/compressed",
             self.listener_callback,
             10,
         )
 
-        self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.joint_pub = self.create_publisher(JointState, "/ugv/joint_states", 10)
-        self.pid_controller = PIDController(Kp=1.0, Ki=0.2, Kd=0.1)
-        self.br = CvBridge()
-        self.detector = apriltag("tagStandard41h12")
+        self.joint_pub = self.create_publisher(
+            JointState, "/ugv/joint_states", 10
+        )
 
-    def starting_camera_position(self):
-        """set camera position to look up"""
+        # -------- camera scanning state --------
+        self.drive_state = False               # True when ready to drive
+        self.last_num_detections = 0
 
+        # pan scan limits
+        self.pan_min = -1.5
+        self.pan_max =  1.5
+        self.pan_step = 0.15
+        self.pan_position = 0.0
+        self.pan_direction = +1   # start sweeping right
+
+        # track full sweep coverage
+        self.reached_min = False
+        self.reached_max = False
+
+        # startup wait
+        self.startup_wait_sec = 10.0
+        self.start_time = self.get_clock().now()
+
+        # scanning timer (no blocking)
+        self.scan_timer = self.create_timer(
+            0.4,   # 10 Hz scan step
+            self.scanning_step
+        )
+
+    def publish_pan_tilt(self, pan, tilt=0.0):
         msg = JointState()
         msg.name = ["pt_base_link_to_pt_link1", "pt_link1_to_pt_link2"]
-        msg.position = [-0.75, 0.0]  # - 45 degrees and 0 degrees in radians
-        self.joint_pub.publish(msg)
-        self.get_logger().info("Camera turned to preset position.")
-        self.destroy_timer(self.initial_camera_timer)
-
-    def driving_camera_position(self, num_detections):
-        if num_detections >= 3:
-            self.drive_state = True
-            return
-
-        if self.pan_position >= 0.75:
-            self.pan_position = 0.0
-
-            msg = JointState()
-            msg.name = ["pt_base_link_to_pt_link1", "pt_link1_to_pt_link2"]
-            msg.position = [0.0, 0.0]
-            self.joint_pub.publish(msg)
-            self.drive_state = True
-
-            return
-
-        msg = JointState()
-        msg.name = ["pt_base_link_to_pt_link1", "pt_link1_to_pt_link2"]
-        self.pan_position += 0.25
-        msg.position = [self.pan_position, 0.0]
+        msg.position = [float(pan), float(tilt)]
         self.joint_pub.publish(msg)
 
-        time.sleep(0.2)
+    def scanning_step(self):
+        # If already in drive mode → center & stop timer
+        if self.drive_state:
+            self.publish_pan_tilt(0.0)
+            self.destroy_timer(self.scan_timer)
+            return
+
+        # ---- STARTUP WAIT ----
+        now = self.get_clock().now()
+        dt = (now - self.start_time).nanoseconds / 1e9
+        if dt < self.startup_wait_sec:
+            return    # keep waiting
+
+        # ---- ENOUGH DETECTIONS? ----
+        if self.last_num_detections >= 2:
+            self.drive_state = True
+            self.get_logger().info("Found detections → locking camera at center.")
+            self.publish_pan_tilt(0.0)
+            self.destroy_timer(self.scan_timer)
+            return
+
+        # ---- FULL SWEEP COVERED AND STILL NOTHING? ----
+        if self.reached_min and self.reached_max:
+            self.get_logger().info("Full sweep done → no detections → centering.")
+            self.publish_pan_tilt(0.0)
+            self.destroy_timer(self.scan_timer)
+            return
+
+        # ---- CONTINUE SWEEPING ----
+        self.pan_position += self.pan_direction * self.pan_step
+
+        # hit right boundary?
+        if self.pan_position >= self.pan_max:
+            self.pan_position = self.pan_max
+            self.reached_max = True
+            self.pan_direction = -1  # reverse direction
+
+        # hit left boundary?
+        if self.pan_position <= self.pan_min:
+            self.pan_position = self.pan_min
+            self.reached_min = True
+            self.pan_direction = +1  # reverse direction
+
+        self.publish_pan_tilt(self.pan_position)
+
 
     def listener_callback(self, data):
-        """Uses the subscribed camera feed to detect lines and follow them"""
-        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8") # for Image
+        np_arr = np.frombuffer(data.data, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
         result, num_detections = marker_detection(frame, self.detector)
-
-        if not self.drive_state:
-            self.driving_camera_position(num_detections)
-
-        cv2.imshow("Marker Detection", result)
+        cv2.imshow("Marker Detection", frame)
         cv2.waitKey(1)
+
 
 def remove_duplicate_detections(detections, distance_threshold=20):
     """
@@ -212,8 +250,6 @@ def draw_detections(color_image, detections, scale=2.0):
     return vis_image
 
 def marker_detection(frame, detector):
-    draw_img = frame.copy()
-    cv2.imshow("Original Image", draw_img)
     result, num_detections = multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5], use_new_processing=True)
 
     return result, num_detections

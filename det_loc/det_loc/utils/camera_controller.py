@@ -193,9 +193,12 @@ class ViewTracker:
         if score is None:
             return False
 
+        print(f"score: {score}, best_view: {self.best_view}")
         if self.best_view is None or score > self.best_view["score"]:
             num_tags = len(detections)
             prev_best = self.best_view
+            print(f"updating best view, detected {num_tags} tags")
+            print(f"center error: {center_error}")
 
             self.best_view = {
                 "pan": pan_position,

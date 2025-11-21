@@ -300,7 +300,7 @@ def get_rotation(ax, ay, bx, by, robot_x, robot_y):
 def triangulation_3p(detections, distances):
     """Performs triangulation to compute the position of the Robot with 3 points."""
     # get intersections between all three points
-    [ab_x, ab_y, ab_Z] = triangulation_2p(detections[:2], distances[:2])
+    [ab_x, ab_y, ab_z] = triangulation_2p(detections[:2], distances[:2])
     [ac_x, ac_y, ac_z] = triangulation_2p(
         [detections[0], detections[2]], [distances[0], distances[2]]
     )

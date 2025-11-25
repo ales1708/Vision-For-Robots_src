@@ -130,7 +130,7 @@ def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5],
     # Remove duplicates
     unique_detections = remove_duplicate_detections(all_detections)
 
-    return unique_detections, len(unique_detections)
+    return unique_detections
 
 
 def draw_detections(color_image, detections, scale=1.0):

@@ -25,6 +25,7 @@ setup(
         "console_scripts": [
             "detection_subscriber = det_loc.detection_subscriber:main",
             "localization_subscriber = det_loc.localization_subscriber:main",
+            "det_loc_subscriber = det_loc.det_loc_subscriber:main",
             "rectify_images = det_loc.rect_images:main",
         ],
     },

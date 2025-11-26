@@ -196,6 +196,7 @@ class ImageSubscriber(Node):
         detections = overlap_bboxes(detections)
 
         # 3. Get distance for each detection w/ depth image
+        depths = []
         for det in detections:
             x, y, w, h = det
 
@@ -208,6 +209,10 @@ class ImageSubscriber(Node):
             # cy = np.clip(cy, 0, depth.shape[0] - 1)
 
             depth_value = depth[cy, cx] / 1000 # from mm to meters
+            depths.append(depth_value)
+
+        #4. Move (bad algorithm, only for testing)
+        self.rover_movement(depths)
 
         # visualize bboxes on rgb
         # for det in detections:
@@ -218,8 +223,8 @@ class ImageSubscriber(Node):
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
-    def rover_movement(self, detections):
-        min_dist = min((det for det in detections), default=None)
+    def rover_movement(self, depths):
+        min_dist = min((depth for depth in depths), default=None)
 
         twist = Twist()
 

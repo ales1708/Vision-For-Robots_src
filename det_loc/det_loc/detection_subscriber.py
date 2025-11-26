@@ -46,7 +46,9 @@ class ImageSubscriber(Node):
         self.drive_state = False
         self.initial_camera_position_found = False
         self.pan_position = 0.0
-        self.initial_camera_timer = self.create_timer(1.0, self.starting_camera_position)
+        self.initial_camera_timer = self.create_timer(
+            1.0, self.starting_camera_position
+        )
 
         self.subscription = self.create_subscription(
             Image,  # use CompressedImage or Image
@@ -97,7 +99,7 @@ class ImageSubscriber(Node):
 
     def listener_callback(self, data):
         """Uses the subscribed camera feed to detect lines and follow them"""
-        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8") # for Image
+        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8")  # for Image
         result, num_detections = marker_detection(frame, self.detector)
 
         if not self.drive_state:
@@ -105,6 +107,7 @@ class ImageSubscriber(Node):
 
         cv2.imshow("Marker Detection", result)
         cv2.waitKey(1)
+
 
 def remove_duplicate_detections(detections, distance_threshold=20):
     """
@@ -118,14 +121,14 @@ def remove_duplicate_detections(detections, distance_threshold=20):
     for det in detections:
         is_duplicate = False
         for unique_det in unique_detections:
-            if det['id'] == unique_det['id']:
-                dx = det['center'][0] - unique_det['center'][0]
-                dy = det['center'][1] - unique_det['center'][1]
+            if det["id"] == unique_det["id"]:
+                dx = det["center"][0] - unique_det["center"][0]
+                dy = det["center"][1] - unique_det["center"][1]
                 distance = math.sqrt(dx**2 + dy**2)
 
                 if distance < distance_threshold:
                     # It's a duplicate, keep the one with higher hamming score
-                    if det['hamming'] < unique_det['hamming']:
+                    if det["hamming"] < unique_det["hamming"]:
                         unique_detections.remove(unique_det)
                         unique_detections.append(det)
                     is_duplicate = True
@@ -136,21 +139,27 @@ def remove_duplicate_detections(detections, distance_threshold=20):
 
     return unique_detections
 
+
 def frame_processing_scale(gray_image, scale, use_new_processing=False):
     """
     Process frame at a specific scale.
     """
-    image = cv2.resize(gray_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    image = cv2.resize(
+        gray_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR
+    )
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     image = clahe.apply(image)
 
     if use_new_processing:
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
 
     return image
 
-def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5], use_new_processing=False):
+
+def multi_scale_marker_detection(
+    frame, detector, scales=[1.5, 2.0, 2.5], use_new_processing=False
+):
     """
     Detect markers at multiple scales and combine results.
     """
@@ -163,8 +172,8 @@ def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5], use_ne
 
         # Adjust coordinates back to original scale
         for det in detections:
-            det['center'] = (det['center'][0] / scale, det['center'][1] / scale)
-            det['lb-rb-rt-lt'] = [(x / scale, y / scale) for x, y in det['lb-rb-rt-lt']]
+            det["center"] = (det["center"][0] / scale, det["center"][1] / scale)
+            det["lb-rb-rt-lt"] = [(x / scale, y / scale) for x, y in det["lb-rb-rt-lt"]]
 
         all_detections.extend(detections)
 
@@ -176,12 +185,16 @@ def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5], use_ne
 
     return result, len(unique_detections)
 
+
 def frame_processing(current_frame):
     scale = 2.0
-    image = cv2.resize(current_frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    image = cv2.resize(
+        current_frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR
+    )
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     image = clahe.apply(image)
     return image
+
 
 def draw_detections(color_image, detections, scale=2.0):
     """
@@ -195,28 +208,41 @@ def draw_detections(color_image, detections, scale=2.0):
     vis_image = color_image.copy()
 
     for detection in detections:
-        corners = detection['lb-rb-rt-lt']
-        corners = [(int(x/scale), int(y/scale)) for x, y in corners]
+        corners = detection["lb-rb-rt-lt"]
+        corners = [(int(x / scale), int(y / scale)) for x, y in corners]
         for i in range(4):
             pt1 = corners[i]
-            pt2 = corners[(i+1) % 4]
+            pt2 = corners[(i + 1) % 4]
             cv2.line(vis_image, pt1, pt2, (0, 255, 0), 2)
 
-        center = (int(detection['center'][0]/scale), int(detection['center'][1]/scale))
+        center = (
+            int(detection["center"][0] / scale),
+            int(detection["center"][1] / scale),
+        )
         cv2.circle(vis_image, center, 5, (0, 0, 255), -1)
-        tag_id = detection['id']
-        cv2.putText(vis_image, f"ID: {tag_id}",
-                    (center[0] - 20, center[1] - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        tag_id = detection["id"]
+        cv2.putText(
+            vis_image,
+            f"ID: {tag_id}",
+            (center[0] - 20, center[1] - 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 0, 0),
+            2,
+        )
 
     return vis_image
 
+
 def marker_detection(frame, detector):
     draw_img = frame.copy()
-    cv2.imshow("Original Image", draw_img)
-    result, num_detections = multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5], use_new_processing=True)
+    # cv2.imshow("Original Image", draw_img)
+    result, num_detections = multi_scale_marker_detection(
+        frame, detector, scales=[1.5, 2.0, 2.5], use_new_processing=True
+    )
 
     return result, num_detections
+
 
 def main(args=None):
     rclpy.init(args=args)

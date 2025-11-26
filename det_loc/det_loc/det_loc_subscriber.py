@@ -12,8 +12,14 @@ from .utils.marker_detection_utils import (
     multi_scale_marker_detection,
 )
 from .utils.camera_calibration_utils import CameraCalibration
-from .utils.localization_utils import distance_measure, triangulation_3p, triangulation_2p, KalmanFilter2D
-from .utils.camera_panning_utils import ViewTracker
+from .utils.localization_utils import (
+    distance_measure,
+    triangulation_3p,
+    triangulation_2p,
+    get_rotation_from_tags,
+    get_rotation_rvec,
+    KalmanFilter2D,
+)
 
 
 class ImageSubscriber(Node):
@@ -46,7 +52,7 @@ class ImageSubscriber(Node):
 
         self.angular_speed_list = []
         self.detector = apriltag("tagStandard41h12")
-        self.tag_size = 0.160 # meters
+        self.tag_size = 0.160  # meters
         self.kf = KalmanFilter2D(dt=0.05)
         self.target = [2.850, 3.0]
 
@@ -114,7 +120,7 @@ class ImageSubscriber(Node):
             self.detector,
             scales=[1.5, 2.0, 2.5],
             use_clahe=True,
-            use_morphology=False
+            use_morphology=False,
         )
 
         # 4. Draw bounding boxes (Visual only)
@@ -167,8 +173,14 @@ class ImageSubscriber(Node):
                 else:
                     robot_pos = triangulation_2p(detections, distances)
 
-                self.kf.predict()
-                filtered_pos = self.kf.update(robot_pos)
+            self.kf.predict()
+            filtered_pos = self.kf.update(robot_pos)
+            print("filtered position:", filtered_pos)
+
+            rotation = get_rotation_from_tags(detections, filtered_pos)
+            print("rotation from tag positions: ", rotation)
+            rotation_rvec = get_rotation_rvec(rvec, detections)
+            print("rotation from rvec: ", rotation_rvec)
 
         cv2.waitKey(1)
 

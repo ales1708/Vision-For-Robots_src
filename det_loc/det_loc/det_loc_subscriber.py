@@ -56,8 +56,8 @@ class ImageSubscriber(Node):
         self.view_tracker.initial_scanning()
         self.scanning_initialized = True
 
-        # Create a timer to execute scanning steps
-        self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
+        # Create a timer to execute scanning steps (slower for better detection)
+        self.scanning_timer = self.create_timer(0.3, self.execute_scan_step)
 
         # Destroy the initialization timer
         self.destroy_timer(self.initial_timer)
@@ -136,12 +136,19 @@ class ImageSubscriber(Node):
         # If scanning, update scan data
         if self.is_scanning and self.scanning_initialized:
             current_pan = self.view_tracker.pan_controller.get_pan_position()
+            frames_accumulated = len(self.view_tracker.current_scan_accumulator)
+
             self.view_tracker.update_scan_data(detections, current_pan)
 
-            # print scanning info in terminal
-            scan_text = f"SCANNING: Pan={current_pan:.2f}"
-            self.get_logger().info(scan_text)
-            self.get_logger().info(f"Detections: {len(detections)}")
+            # Only log when we complete a position (reduces spam)
+            new_frames = len(self.view_tracker.current_scan_accumulator)
+            if new_frames == 0 and frames_accumulated > 0:
+                # Position just completed
+                num_positions = len(self.view_tracker.scan_data)
+                self.get_logger().info(
+                    f"Scan position {num_positions} complete | Pan={current_pan:.3f}rad | "
+                    f"Avg detections={self.view_tracker.scan_data[-1]['num_detections']:.1f}"
+                )
 
         cv2.imshow("detected tags", vis_image)
 

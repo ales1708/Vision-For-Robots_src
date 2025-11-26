@@ -4,7 +4,7 @@ import numpy as np
 class Pan_Controller:
     def __init__(self, pan_publisher):
         self.pan_position = 0.0
-        self.pan_step = 0.1
+        self.pan_step = 0.05  # Smaller step for slower, more accurate scanning
         self.pan_min = -1.5
         self.pan_max = 1.5
         self.pan_direction = 1
@@ -61,7 +61,7 @@ class ViewTracker:
         # Scanning data storage
         self.scan_data = []  # List of dicts with {pan_position, num_detections, center_error}
         self.current_scan_accumulator = []  # Accumulate data for current pan position
-        self.frames_per_position = 5  # Number of frames to average per position
+        self.frames_per_position = 10  # Number of frames to average per position (balanced for accuracy and speed)
 
     def initial_scanning(self):
         """Reset and start scanning operation"""

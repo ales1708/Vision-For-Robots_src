@@ -57,7 +57,7 @@ class ImageSubscriber(Node):
         self.scanning_initialized = True
 
         # Create a timer to execute scanning steps (slower for better detection)
-        self.scanning_timer = self.create_timer(0.3, self.execute_scan_step)
+        self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
 
         # Destroy the initialization timer
         self.destroy_timer(self.initial_timer)
@@ -79,35 +79,22 @@ class ImageSubscriber(Node):
             self.destroy_timer(self.scanning_timer)
             self.scanning_timer = None
 
-        # Log scan results
-        self.get_logger().info("="*50)
-        self.get_logger().info("SCANNING COMPLETE!")
-        self.get_logger().info(f"Total scan positions: {len(self.view_tracker.scan_data)}")
-
-        for i, data in enumerate(self.view_tracker.scan_data):
-            self.get_logger().info(
-                f"Position {i+1}: Pan={data['pan_position']:.3f}, "
-                f"Detections={data['num_detections']:.1f}, "
-                f"Center Error={data['center_error']:.2f}"
-            )
-
         # Report best view
         best_view = self.view_tracker.get_best_view()
         if best_view is not None:
-            self.get_logger().info("-"*50)
+            meets_req = best_view['num_detections'] >= 2
+            status = "✓" if meets_req else "✗"
             self.get_logger().info(
-                f"BEST VIEW: Pan={best_view['pan_position']:.3f}, "
-                f"Detections={best_view['num_detections']:.1f}, "
-                f"Center Error={best_view['center_error']:.2f}"
+                f"Scan complete | Best view: Pan={best_view['pan_position']:.3f}rad, "
+                f"Det={best_view['num_detections']:.1f}, CenterErr={best_view['center_error']:.1f}px {status}"
             )
-            self.get_logger().info("="*50)
 
-            # Move to best view
+            # Move to best view and enable tracking
             self.view_tracker.move_to_best_view()
-            self.get_logger().info("Moved to best view position.")
+            self.view_tracker.enable_tracking()
+            self.get_logger().info("Moved to best view. Tracking enabled.")
         else:
-            self.get_logger().warn("No valid views found during scan!")
-            self.get_logger().info("="*50)
+            self.get_logger().warn("Scan complete. No valid views found!")
 
     def listener_callback(self, data):
         """converts recieved images to cv2 images"""
@@ -154,6 +141,15 @@ class ImageSubscriber(Node):
 
         # Only do localization if scanning is complete
         if not self.is_scanning:
+            # Apply dynamic tracking to keep tags centered
+            if len(detections) >= 1:
+                adjusted, error_x, adjustment = self.view_tracker.check_and_adjust_tracking(detections)
+                if adjusted:
+                    self.get_logger().info(
+                        f"Pan adjusted to re-center tags | Error: {error_x:.1f}px | "
+                        f"Adjustment: {adjustment:.3f}rad | New pan: {self.view_tracker.pan_controller.get_pan_position():.3f}rad"
+                    )
+
             # 5. Measure Distance
             # Note: We pass the P_rect_matrix because the image 'frame' is now undistorted.
             # scale=1.0 because coordinates are already adjusted to original image size

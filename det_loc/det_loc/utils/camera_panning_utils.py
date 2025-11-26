@@ -13,6 +13,10 @@ class Pan_Controller:
         self.pan_min_reached = False
         self.scanning_complete = False
 
+        # Dynamic tracking parameters
+        self.tracking_gain = 0.002  # radians per pixel of error
+        self.max_tracking_adjustment = 0.1  # max radians per adjustment
+
     def set_pan_position(self, pan_position):
         self.pan_position = pan_position
 
@@ -44,6 +48,49 @@ class Pan_Controller:
 
         self.publish_pan_position()
 
+    def adjust_pan_to_center(self, center_error_x, image_center_x):
+        """Calculate required pan adjustment to center detected tags
+
+        Args:
+            center_error_x: Horizontal pixel error (average tag center X - image center X)
+            image_center_x: X coordinate of image center (for reference)
+
+        Returns:
+            Required pan adjustment in radians (negative = pan left, positive = pan right)
+        """
+        # Convert pixel error to pan angle adjustment
+        # Negative error means tags are left of center, need to pan left (negative)
+        # Positive error means tags are right of center, need to pan right (positive)
+        adjustment = -center_error_x * self.tracking_gain
+
+        # Clamp adjustment to max allowed
+        adjustment = np.clip(adjustment, -self.max_tracking_adjustment, self.max_tracking_adjustment)
+
+        return adjustment
+
+    def apply_tracking_adjustment(self, adjustment):
+        """Apply pan adjustment for tracking and publish new position
+
+        Args:
+            adjustment: Pan adjustment in radians
+
+        Returns:
+            True if adjustment was applied, False if limits prevented it
+        """
+        new_position = self.pan_position + adjustment
+
+        # Respect pan limits
+        if new_position < self.pan_min or new_position > self.pan_max:
+            # Clamp to limits
+            new_position = np.clip(new_position, self.pan_min, self.pan_max)
+            if new_position == self.pan_position:
+                # Already at limit, no adjustment possible
+                return False
+
+        self.pan_position = new_position
+        self.publish_pan_position()
+        return True
+
     def publish_pan_position(self):
         msg = JointState()
         msg.name = ["pt_base_link_to_pt_link1", "pt_link1_to_pt_link2"]
@@ -62,6 +109,10 @@ class ViewTracker:
         self.scan_data = []  # List of dicts with {pan_position, num_detections, center_error}
         self.current_scan_accumulator = []  # Accumulate data for current pan position
         self.frames_per_position = 10  # Number of frames to average per position (balanced for accuracy and speed)
+
+        # Tracking state management
+        self.tracking_enabled = False
+        self.center_error_threshold = 50.0  # pixels - only adjust if exceeded
 
     def initial_scanning(self):
         """Reset and start scanning operation"""
@@ -113,18 +164,25 @@ class ViewTracker:
         }
 
     def track_view(self, scan_data_point):
-        """Track the best view based on number of detections and center error"""
+        """Track the best view based on number of detections and center error
+
+        Priority: Having at least 2 detections is critical, then minimize center error
+        """
         if scan_data_point is None:
             return
 
         num_detections = scan_data_point['num_detections']
         center_error = scan_data_point['center_error']
 
-        # Calculate score: prioritize number of detections, then minimize center error
-        # Higher score is better
-        if num_detections > 0 and center_error != float('inf'):
-            score = num_detections * 100 - center_error
+        if num_detections >= 2 and center_error != float('inf'):
+            # Valid view: High base score, heavily penalize center error
+            # Score = 10000 + bonus for extra detections - (center_error * 10)
+            score = 10000 + (num_detections - 2) * 50 - (center_error * 10)
+        elif num_detections == 1 and center_error != float('inf'):
+            # Suboptimal: Only 1 detection, much lower score
+            score = 1000 - (center_error * 5)
         else:
+            # Invalid: No detections or infinite error
             score = 0.0
 
         if score > self.best_view_score:
@@ -163,3 +221,49 @@ class ViewTracker:
             self.pan_controller.publish_pan_position()
             return True
         return False
+
+    def enable_tracking(self):
+        """Enable dynamic tracking mode after scanning completes"""
+        self.tracking_enabled = True
+
+    def disable_tracking(self):
+        """Disable dynamic tracking mode"""
+        self.tracking_enabled = False
+
+    def check_and_adjust_tracking(self, detections):
+        """Check if tags need re-centering and adjust pan if necessary
+
+        Args:
+            detections: List of detected AprilTags
+
+        Returns:
+            Tuple of (adjusted: bool, error_x: float, adjustment: float)
+            - adjusted: Whether pan was adjusted
+            - error_x: Horizontal error in pixels
+            - adjustment: Pan adjustment applied in radians (0 if not adjusted)
+        """
+        if not self.tracking_enabled or not detections:
+            return False, 0.0, 0.0
+
+        # Calculate average center position of all detected tags
+        avg_center_x = np.mean([det['center'][0] for det in detections])
+
+        # Compute horizontal error from image center
+        error_x = avg_center_x - self.image_center[0]
+
+        # Check if error exceeds threshold
+        if abs(error_x) > self.center_error_threshold:
+            # Calculate required adjustment
+            adjustment = self.pan_controller.adjust_pan_to_center(error_x, self.image_center[0])
+
+            # Apply adjustment
+            success = self.pan_controller.apply_tracking_adjustment(adjustment)
+
+            if success:
+                return True, error_x, adjustment
+            else:
+                # At pan limit, couldn't adjust
+                return False, error_x, 0.0
+
+        # Error within threshold, no adjustment needed
+        return False, error_x, 0.0

@@ -88,7 +88,7 @@ class ImageSubscriber(Node):
         # Report best view
         best_view = self.view_tracker.get_best_view()
         if best_view is not None:
-            meets_req = best_view['num_detections'] >= 2
+            meets_req = best_view["num_detections"] >= 2
             status = "✓" if meets_req else "✗"
             self.get_logger().info(
                 f"Scan complete | Best view: Pan={best_view['pan_position']:.3f}rad, "
@@ -149,7 +149,9 @@ class ImageSubscriber(Node):
         if not self.is_scanning:
             # Apply dynamic tracking to keep tags centered
             if len(detections) >= 1:
-                adjusted, error_x, adjustment = self.view_tracker.check_and_adjust_tracking(detections)
+                adjusted, error_x, adjustment = (
+                    self.view_tracker.check_and_adjust_tracking(detections)
+                )
                 if adjusted:
                     self.get_logger().info(
                         f"Pan adjusted to re-center tags | Error: {error_x:.1f}px | "
@@ -159,7 +161,7 @@ class ImageSubscriber(Node):
             # 5. Measure Distance
             # Note: We pass the P_rect_matrix because the image 'frame' is now undistorted.
             # scale=1.0 because coordinates are already adjusted to original image size
-            distance_frame, distances = distance_measure(
+            distance_frame, distances, rvec = distance_measure(
                 vis_image,
                 detections,
                 self.calibration.P_rect_matrix,

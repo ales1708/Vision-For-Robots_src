@@ -4,7 +4,7 @@ import numpy as np
 class Pan_Controller:
     def __init__(self, pan_publisher):
         self.pan_position = 0.0
-        self.pan_step = 0.01
+        self.pan_step = 0.1
         self.pan_min = -1.5
         self.pan_max = 1.5
         self.pan_direction = 1
@@ -46,8 +46,8 @@ class Pan_Controller:
 
     def publish_pan_position(self):
         msg = JointState()
-        msg.name = ["pt_base_link_to_pt_link1"]
-        msg.position = [self.pan_position,]
+        msg.name = ["pt_base_link_to_pt_link1", "pt_link1_to_pt_link2"]
+        msg.position = [self.pan_position, 0.0]
         self.pan_publisher.publish(msg)
 
 class ViewTracker:

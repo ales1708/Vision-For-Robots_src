@@ -7,6 +7,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState, CameraInfo
 from cv_bridge import CvBridge
+from message_filters import Subscriber, ApproximateTimeSynchronizer
 from .utils.marker_detection_utils import (
     draw_detections,
     multi_scale_marker_detection,
@@ -14,6 +15,7 @@ from .utils.marker_detection_utils import (
 from .utils.camera_calibration_utils import CameraCalibration
 from .utils.localization_utils import distance_measure, triangulation_3p, triangulation_2p, KalmanFilter2D
 from .utils.camera_panning_utils import ViewTracker
+from .utils.rover_detection import rover_detection, overlap_bboxes
 
 
 class ImageSubscriber(Node):
@@ -26,6 +28,20 @@ class ImageSubscriber(Node):
             self.listener_callback,
             10,
         )
+
+        # synchornized subscribers?????? hopefully
+        # Create subscribers using message_filters
+        self.oak_rgb_sub = Subscriber(self, Image, "/oak/rgb/image_raw")
+        self.oak_depth_sub = Subscriber(self, Image, "/oak/depth/image_raw")
+
+        # Synchronizer: keeps RGB + depth aligned???
+        self.ts = ApproximateTimeSynchronizer(
+            [self.oak_rgb_sub, self.oak_depth_sub],
+            queue_size=10,
+            slop=0.05
+        )
+        self.ts.registerCallback(self.oak_callback)
+
 
         self.calibration = CameraCalibration()
         self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
@@ -168,6 +184,64 @@ class ImageSubscriber(Node):
                 filtered_pos = self.kf.update(robot_pos)
 
         cv2.waitKey(1)
+    
+    def oak_callback(self, rgb, depth):
+        # 1. Convert to OpenCV
+        rgb = self.br.imgmsg_to_cv2(rgb, desired_encoding="bgr8")
+        frame = cv2.imdecode(rgb, cv2.IMREAD_COLOR)
+        depth = self.br.imgmsg_to_cv2(depth, desired_encoding="16UC1")
+
+        # 2. Detect obstacles/rovers and remove overlapping bboxes in RGB image
+        detections = rover_detection(frame)
+        detections = overlap_bboxes(detections)
+
+        # 3. Get distance for each detection w/ depth image
+        for det in detections:
+            x, y, w, h = det
+
+            # depth ROI in the center of bbox
+            cx = x + w // 2
+            cy = y + h // 2
+
+            # # clamp within image - gpt suggestion, not sure if necessary
+            # cx = np.clip(cx, 0, depth.shape[1] - 1)
+            # cy = np.clip(cy, 0, depth.shape[0] - 1)
+
+            depth_value = depth[cy, cx] / 1000 # from mm to meters
+
+        # visualize bboxes on rgb
+        # for det in detections:
+        #     x, y, w, h = rover
+        #     cv2.rectangle(rgb, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
+        #     cv2.circle(rgb, (x, y), 5, (255, 0, 0), -1)
+        # cv2.imshow("Detected Rovers", rgb)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+    def rover_movement(self, detections):
+        min_dist = min((det for det in detections), default=None)
+
+        twist = Twist()
+
+        if min_dist is None:
+            # no obstacles
+            twist.linear.x = 0.3
+            twist.angular.z = 0.0
+        else:
+            if min_dist < 0.3:
+                # stop + turn
+                twist.linear.x = 0.0
+                twist.angular.z = 0.3
+            elif min_dist < 0.5:
+                # slow down
+                twist.linear.x = 0.1
+                twist.angular.z = 0.0
+            else:
+                # failsafe stop
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+
+        self.cmd_vel_pub.publish(twist)
 
 
 def main(args=None):

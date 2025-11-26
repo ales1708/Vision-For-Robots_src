@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def distance_measure(frame, results, camera_matrix, tag_size, logger):
     """
     Measures the distance to an apriltag.
@@ -8,7 +9,7 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
     """
 
     if len(results) == 0:
-        return frame, None
+        return frame, None, None
 
     half = tag_size / 2.0
 
@@ -16,9 +17,9 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
     object_points = np.array(
         [
             [-half, -half, 0],  # Bottom-Left
-            [half, -half, 0],   # Bottom-Right
-            [half, half, 0],    # Top-Right
-            [-half, half, 0],   # Top-Left
+            [half, -half, 0],  # Bottom-Right
+            [half, half, 0],  # Top-Right
+            [-half, half, 0],  # Top-Left
         ],
         dtype=np.float32,
     )
@@ -57,7 +58,7 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
             pass
             logger.info(f"AprilTag {results[i]['id']} distance: {distances[i]:.3f} m")
 
-    return frame, distances
+    return frame, distances, rvec
 
 
 def triangulation_3p(detections, distances):
@@ -79,6 +80,80 @@ def triangulation_3p(detections, distances):
 def triangulation_2p(detections, distances):
     """Performs triangulation to compute the position of the Robot with 2 points."""
     # locations of tags
+    # april_tags = {
+    #     "tag1": [9.0, 3.0],
+    #     "tag2": [7.350, 0.0],
+    #     "tag3": [7.350, 6.0],
+    #     "tag4": [4.5, 0.0],
+    #     "tag5": [4.5, 6.0],
+    #     "tag6": [2.644, -0.28],
+    #     "tag7": [2.644, 6.78],
+    #     "tag8": [0, 0.144],
+    #     "tag9": [0.0, 3.0],
+    #     "tag10": [0.0, 5.866],
+    # }
+
+    # # get detected tags
+    # a = detections[0]["id"]
+    # b = detections[1]["id"]
+
+    # # Verify tags exist in dict
+    # if f"tag{a}" not in april_tags or f"tag{b}" not in april_tags:
+    #     print(f"Tag ID {a} or {b} not found in map")
+    #     return [0.0, 0.0]
+
+    # [ax, ay] = april_tags[f"tag{a}"]
+    # [bx, by] = april_tags[f"tag{b}"]
+    ax, ay, bx, by = get_tag_positions(detections)
+
+    [a_d, b_d] = distances
+
+    if a_d is None or b_d is None:
+        return [0.0, 0.0]
+
+    # get euclidean distance between a and b
+    d = np.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
+
+    # Triangle inequality check (with slight tolerance)
+    if d > (a_d + b_d) * 1.05:
+        print("circles dont intersect")
+
+    # get triangle geometry
+    try:
+        z = (a_d**2 - b_d**2 + d**2) / (2 * d)
+        h = np.sqrt(max(0, a_d**2 - z**2))  # prevent sqrt of negative
+        cx = ax + z * (bx - ax) / d
+        cy = ay + z * (by - ay) / d
+
+        # get possible robot coordinates
+        qx = cx + h * (by - ay) / d
+        qy = cy - h * (bx - ax) / d
+        px = cx - h * (by - ay) / d
+        py = cy + h * (bx - ax) / d
+
+        # remove the extraneous solution that lies outside the field.
+        if qx < 0 or qx > 9 or qy < 0 or qy > 6:
+            robot_pos = [px, py]
+        else:
+            robot_pos = [qx, qy]
+
+    except Exception as e:
+        print(f"Triangulation error: {e}")
+        return [0.0, 0.0]
+
+    return robot_pos
+
+
+def get_tag_positions(detections):
+    """
+    Retrieves the location of detected tags
+
+    Args:
+        detections: 2 detected tags
+
+    Returns:
+        x and y coordinates of both tags
+    """
     april_tags = {
         "tag1": [9.0, 3.0],
         "tag2": [7.350, 0.0],
@@ -103,43 +178,86 @@ def triangulation_2p(detections, distances):
 
     [ax, ay] = april_tags[f"tag{a}"]
     [bx, by] = april_tags[f"tag{b}"]
+    return ax, ay, bx, by
 
-    [a_d, b_d] = distances
 
-    if a_d is None or b_d is None:
-        return [0.0, 0.0]
+def get_tag_rotation(detection):
+    april_tags_rotations = {
+        "tag1": [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],  # 180
+        "tag2": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        "tag3": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        "tag4": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        "tag5": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        "tag6": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        "tag7": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        "tag8": np.eye(3),  # 0
+        "tag9": np.eye(3),  # 0
+        "tag10": np.eye(3),  # 0
+    }
+    tag = detection["id"]
+    rotation = april_tags_rotations[f"tag{tag}"]
 
-    # get euclidean distance between a and b
-    d = np.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
+    return rotation, tag
 
-    # Triangle inequality check (with slight tolerance)
-    if d > (a_d + b_d) * 1.05:
-        print("circles dont intersect")
 
-    # get triangle geometry
-    try:
-        z = (a_d**2 - b_d**2 + d**2) / (2 * d)
-        h = np.sqrt(max(0, a_d**2 - z**2)) # prevent sqrt of negative
-        cx = ax + z * (bx - ax) / d
-        cy = ay + z * (by - ay) / d
+def get_rotation_rvec(rvec, detections):
+    """
+    Estimate robot rotation from rvec.
 
-        # get possible robot coordinates
-        qx = cx + h * (by - ay) / d
-        qy = cy - h * (bx - ax) / d
-        px = cx - h * (by - ay) / d
-        py = cy + h * (bx - ax) / d
+    Args:
+        detections: detected tags
+        robot_pos: x and y coordinates of the robot
 
-        # remove the extraneous solution that lies outside the field.
-        if qx < 0 or qx > 9 or qy < 0 or qy > 6:
-             robot_pos = [px, py]
-        else:
-             robot_pos = [qx, qy]
+    Returns:
+        Estimated rotation angle (radians)
+    """
+    # r_matrix = cv2.Rodrigues(rvec)[0]
+    print(rvec)
+    R, _ = cv2.Rodrigues(rvec)
+    R_cam2tag = R.T
 
-    except Exception as e:
-        print(f"Triangulation error: {e}")
-        return [0.0, 0.0]
+    # theta = np.radians(90)
+    # R_cam2robot = np.array(
+    #     [
+    #         [np.cos(theta), -np.sin(theta), 0],
+    #         [np.sin(theta), np.cos(theta), 0],
+    #         [0, 0, 1],
+    #     ]
+    # )
+    R_cam2robot = np.eye(3)  # assumes camera is straight
+    R_robot = R_cam2robot @ R_cam2tag
+    R_tag2world, tag_id = get_tag_rotation(detections[-1])
+    R_robot_world = R_tag2world @ R_robot
 
-    return robot_pos
+    if tag_id is in [1, 8, 9, 10]:
+        yaw_robot = np.arctan2(R_robot_world[0, 2], R_robot_world[2, 2])
+    else:
+        yaw_robot = np.arctan2(R_robot_world[1, 0], R_robot_world[0, 0])
+        # yaw = np.arctan2(R[1,0], R[0,0])
+
+    yaw_robot_deg = np.degrees(yaw_robot) % 360
+    # yaw_rotation = np.arctan2(r_matrix[1, 0], r_matrix[0, 0])
+    return yaw_robot_deg
+
+
+def get_rotation_from_tags(detections, robot_pos):
+    """
+    Estimate robot rotation from two tag positions.
+
+    Args:
+        detections: detected tags
+        robot_pos: x and y coordinates of the robot
+
+    Returns:
+        Estimated rotation angle (radians)
+    """
+    ax, ay, bx, by = get_tag_positions(detections)
+    [robot_x, robot_y] = robot_pos
+
+    theta1 = np.arctan2(ay - robot_y, ax - robot_x)
+    theta2 = np.arctan2(by - robot_y, bx - robot_x)
+    return np.degrees((theta1 + theta2) / 2)
+
 
 # based on: https://www.geeksforgeeks.org/python/kalman-filter-in-python/
 class KalmanFilter2D:

@@ -20,6 +20,7 @@ from .utils.localization_utils import (
     get_rotation_rvec,
     KalmanFilter2D,
 )
+from .utils.camera_panning_utils import ViewTracker
 
 
 class ImageSubscriber(Node):
@@ -179,10 +180,8 @@ class ImageSubscriber(Node):
             filtered_pos = self.kf.update(robot_pos)
             print("filtered position:", filtered_pos)
 
-            rotation = get_rotation_from_tags(detections, filtered_pos)
-            print("rotation from tag positions: ", rotation)
-            rotation_rvec = get_rotation_rvec(rvec, detections)
-            print("rotation from rvec: ", rotation_rvec)
+            robot_rotation, robot_rotation_degrees = get_rotation_rvec(rvec, detections)
+            print("rotation in radians [-pi, pi]: ", robot_rotation)
 
         cv2.waitKey(1)
 

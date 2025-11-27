@@ -56,7 +56,7 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
         if distances[i] is not None:
             # Optional: throttle this log to avoid spamming console
             pass
-            logger.info(f"AprilTag {results[i]['id']} distance: {distances[i]:.3f} m")
+            # logger.info(f"AprilTag {results[i]['id']} distance: {distances[i]:.3f} m")
 
     return frame, distances, rvec
 
@@ -210,28 +210,32 @@ def get_tag_rotation(detection):
     return np.array(rotation), tag
 
 
-def get_rotation_rvec(rvec, detections):
+def get_rotation_rvec(rvec, detections, robot_pos):
     """
     Estimate robot rotation from rvec.
 
     Args:
-        rvec: rvec vector obtained from pnp
+        rvec: rotation vector of rotation between tag and robot
         detections: detected tags
 
     Returns:
         Estimated rotation angle (degrees)
     """
 
-    R_cam_to_tag, _ = cv2.Rodrigues(rvec)
-    yaw = np.arctan2(R_cam_to_tag[1, 0], R_cam_to_tag[0, 0])
+    # get
+    # R_cam_to_tag, _ = cv2.Rodrigues(rvec)
+    # yaw = np.arctan2(R_cam_to_tag[1, 0], R_cam_to_tag[0, 0])
+    # tag_pos = get_tag_positions(detections[-1])
+    _, _, bx, by = get_tag_positions(detections[-2:])
+    tag_robot_yaw = np.arctan2(robot_pos[1] - by, robot_pos[0] - bx)
     tag_global_yaw, tag = get_tag_rotation(detections[-1])  # use last detection
-    robot_yaw = tag_global_yaw + np.pi + yaw
+    robot_yaw = tag_global_yaw + np.pi + tag_robot_yaw
     # robot_yaw = (robot_yaw + np.pi) % (2 * np.pi) - np.pi # normalize to [-pi, pi]
     robot_yaw = robot_yaw % (2 * np.pi)  # normalize to [0, 2pi]
 
     robot_yaw_degrees = robot_yaw * 180 / np.pi
 
-    return robot_yaw, robot_yaw_degrees
+    return robot_yaw, robot_yaw_degrees, tag
 
 
 def get_rotation_from_tags(detections, robot_pos):

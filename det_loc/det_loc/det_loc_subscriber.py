@@ -49,13 +49,13 @@ class ImageSubscriber(Node):
         self.scanning_timer = None
 
         # Start scanning after 1 second delay to allow camera to initialize
-        self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
+        # self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
 
         self.angular_speed_list = []
         self.detector = apriltag("tagStandard41h12")
         self.tag_size = 0.160  # meters
         self.kf = KalmanFilter2D(dt=0.05)
-        self.target = [2.850, 3.0]
+        self.target = [1.3, 3.0]  # penalty dot
 
     def start_initial_scan(self):
         """Initialize the scanning operation"""
@@ -64,10 +64,10 @@ class ImageSubscriber(Node):
         self.scanning_initialized = True
 
         # Create a timer to execute scanning steps (slower for better detection)
-        self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
+        # self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
 
         # Destroy the initialization timer
-        self.destroy_timer(self.initial_timer)
+        # self.destroy_timer(self.initial_timer)
 
     def execute_scan_step(self):
         """Execute one step of the scanning operation"""
@@ -127,37 +127,37 @@ class ImageSubscriber(Node):
         # 4. Draw bounding boxes (Visual only)
         vis_image = draw_detections(frame, detections, scale=1.0)
 
-        # If scanning, update scan data
-        if self.is_scanning and self.scanning_initialized:
-            current_pan = self.view_tracker.pan_controller.get_pan_position()
-            frames_accumulated = len(self.view_tracker.current_scan_accumulator)
+        # # If scanning, update scan data
+        # if self.is_scanning and self.scanning_initialized:
+        #     current_pan = self.view_tracker.pan_controller.get_pan_position()
+        #     frames_accumulated = len(self.view_tracker.current_scan_accumulator)
 
-            self.view_tracker.update_scan_data(detections, current_pan)
+        #     self.view_tracker.update_scan_data(detections, current_pan)
 
-            # Only log when we complete a position (reduces spam)
-            new_frames = len(self.view_tracker.current_scan_accumulator)
-            if new_frames == 0 and frames_accumulated > 0:
-                # Position just completed
-                num_positions = len(self.view_tracker.scan_data)
-                self.get_logger().info(
-                    f"Scan position {num_positions} complete | Pan={current_pan:.3f}rad | "
-                    f"Avg detections={self.view_tracker.scan_data[-1]['num_detections']:.1f}"
-                )
+        #     # Only log when we complete a position (reduces spam)
+        #     new_frames = len(self.view_tracker.current_scan_accumulator)
+        #     if new_frames == 0 and frames_accumulated > 0:
+        #         # Position just completed
+        #         num_positions = len(self.view_tracker.scan_data)
+        #         self.get_logger().info(
+        #             f"Scan position {num_positions} complete | Pan={current_pan:.3f}rad | "
+        #             f"Avg detections={self.view_tracker.scan_data[-1]['num_detections']:.1f}"
+        # )
 
         cv2.imshow("detected tags", vis_image)
 
         # Only do localization if scanning is complete
-        if not self.is_scanning:
+        if True:
             # Apply dynamic tracking to keep tags centered
-            if len(detections) >= 1:
-                adjusted, error_x, adjustment = (
-                    self.view_tracker.check_and_adjust_tracking(detections)
-                )
-                if adjusted:
-                    self.get_logger().info(
-                        f"Pan adjusted to re-center tags | Error: {error_x:.1f}px | "
-                        f"Adjustment: {adjustment:.3f}rad | New pan: {self.view_tracker.pan_controller.get_pan_position():.3f}rad"
-                    )
+            # if len(detections) >= 1:
+            #     adjusted, error_x, adjustment = (
+            #         self.view_tracker.check_and_adjust_tracking(detections)
+            # #     )
+            #     if adjusted:
+            #         self.get_logger().info(
+            #             f"Pan adjusted to re-center tags | Error: {error_x:.1f}px | "
+            #             f"Adjustment: {adjustment:.3f}rad | New pan: {self.view_tracker.pan_controller.get_pan_position():.3f}rad"
+            #         )
 
             # 5. Measure Distance
             # Note: We pass the P_rect_matrix because the image 'frame' is now undistorted.
@@ -176,22 +176,26 @@ class ImageSubscriber(Node):
                 else:
                     robot_pos = triangulation_2p(detections, distances)
 
-            self.kf.predict()
-            filtered_pos = self.kf.update(robot_pos)
-            print("filtered position:", filtered_pos)
+                self.kf.predict()
+                filtered_pos = self.kf.update(robot_pos)
+                print("filtered position:", filtered_pos)
 
-            robot_rotation, robot_rotation_degrees = get_rotation_rvec(rvec, detections)
-            print("rotation in degrees: ", robot_rotation_degrees)
+                robot_rotation, robot_rotation_degrees, tag = get_rotation_rvec(
+                    rvec, detections, filtered_pos
+                )
+                print("rotation in degrees: ", robot_rotation_degrees, "tag", tag)
 
-            self.rover_movement(self, self.target, filtered_pos, robot_rotation_degrees)
+                # self.rover_movement(self.target, filtered_pos, robot_rotation_degrees)
 
         cv2.waitKey(1)
 
     def rover_movement(self, target, filtered_pos, rotation):
         twist = Twist()
 
-        z_error = rotation  # maybe add some normalization or whatever here, depends on rotation from fiona
-
+        z_error = np.arctan2(
+            target[1] - filtered_pos[1], target[0] - filtered_pos[0]
+        )  # maybe add some normalization or whatever here, depends on rotation from fiona
+        turn_to_target = rotation - z_error
         distance_to_target = np.sqrt(
             (filtered_pos[0] - target[0]) ** 2 + (filtered_pos[1] - target[1]) ** 2
         )
@@ -201,19 +205,28 @@ class ImageSubscriber(Node):
         else:
             speed = 0.5
 
-        if z_error < 0.4:
+        if turn_to_target < 30:
             rotate = 0.5
-        elif z_error > 0.4:
+        elif turn_to_target > 30:
             rotate = -0.5
-        elif abs(z_error) <= 0.2:
+        elif abs(turn_to_target) <= 10:
             rotate = 0.1
+        else:
+            rotate = 0.0
+
+        print(turn_to_target)
 
         if distance_to_target < 0.05:  # risky?
             twist.linear.x = 0.0
             twist.angular.z = 0.0
+        if rotate != 0:
+            twist.linear.x = 0.0
+            twist.angular.z = rotate
         else:
             twist.linear.x = speed
-            twist.angular.z = rotate
+            twist.angular.z = 0.0
+
+        self.cmd_vel_pub.publish(twist)
 
 
 def main(args=None):

@@ -226,33 +226,11 @@ def get_rotation_rvec(rvec, detections):
     yaw = np.arctan2(R_cam_to_tag[1, 0], R_cam_to_tag[0, 0])
     tag_global_yaw, tag = get_tag_rotation(detections[-1])  # use last detection
     robot_yaw = tag_global_yaw + np.pi + yaw
-    robot_yaw = (robot_yaw + np.pi) % (2 * np.pi) - np.pi
+    # robot_yaw = (robot_yaw + np.pi) % (2 * np.pi) - np.pi # normalize to [-pi, pi]
+    robot_yaw = robot_yaw % (2 * np.pi)  # normalize to [0, 2pi]
+
     robot_yaw_degrees = robot_yaw * 180 / np.pi
-    # r_matrix = cv2.Rodrigues(rvec)[0]
-    # print(rvec)
-    # R, _ = cv2.Rodrigues(rvec)
-    # R_cam2tag = R.T
 
-    # # theta = np.radians(90)
-    # # R_cam2robot = np.array(
-    # #     [
-    # #         [np.cos(theta), -np.sin(theta), 0],
-    # #         [np.sin(theta), np.cos(theta), 0],
-    # #         [0, 0, 1],
-    # #     ]
-    # # )
-    # R_cam2robot = np.eye(3)  # assumes camera is straight
-    # R_robot = R_cam2robot @ R_cam2tag
-    # R_tag2world, tag_id = get_tag_rotation(detections[-1])
-    # R_robot_world = R_tag2world @ R_robot
-
-    # if tag_id in [1, 8, 9, 10]:
-    #     yaw_robot = np.arctan2(R_robot_world[0, 2], R_robot_world[2, 2])
-    # else:
-    #     yaw_robot = np.arctan2(R_robot_world[1, 0], R_robot_world[0, 0])
-    #     # yaw = np.arctan2(R[1,0], R[0,0])
-
-    # yaw_robot_deg = np.degrees(yaw_robot) % 360
     return robot_yaw, robot_yaw_degrees
 
 

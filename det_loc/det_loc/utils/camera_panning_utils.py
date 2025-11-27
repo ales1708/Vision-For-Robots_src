@@ -14,8 +14,8 @@ class Pan_Controller:
         self.scanning_complete = False
 
         # Dynamic tracking parameters
-        self.tracking_gain = 0.002  # radians per pixel of error
-        self.max_tracking_adjustment = 0.1  # max radians per adjustment
+        self.tracking_gain = 0.001  # radians per pixel of error
+        self.max_tracking_adjustment = 0.05  # max radians per adjustment
 
     def set_pan_position(self, pan_position):
         self.pan_position = pan_position
@@ -112,7 +112,7 @@ class ViewTracker:
 
         # Tracking state management
         self.tracking_enabled = False
-        self.center_error_threshold = 50.0  # pixels - only adjust if exceeded
+        self.center_error_threshold = 75.0  # pixels - only adjust if exceeded
 
     def initial_scanning(self):
         """Reset and start scanning operation"""
@@ -262,8 +262,6 @@ class ViewTracker:
             if success:
                 return True, error_x, adjustment
             else:
-                # At pan limit, couldn't adjust
                 return False, error_x, 0.0
 
-        # Error within threshold, no adjustment needed
         return False, error_x, 0.0

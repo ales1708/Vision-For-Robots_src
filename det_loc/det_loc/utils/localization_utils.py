@@ -1,6 +1,85 @@
 import cv2
 import numpy as np
 
+APRILTAG_POSITIONS = {
+    "tag1": [9.0, 3.0],
+    "tag2": [7.350, 0.0],
+    "tag3": [7.350, 6.0],
+    "tag4": [4.5, 0.0],
+    "tag5": [4.5, 6.0],
+    "tag6": [2.644, -0.28],
+    "tag7": [2.644, 6.78],
+    "tag8": [0, 0.144],
+    "tag9": [0.0, 3.0],
+    "tag10": [0.0, 5.866],
+}
+
+
+def find_closest_tags(robot_position, num_tags=2, robot_heading=None, fov_degrees=100):
+    """
+    Find the N closest AprilTags to the robot's current position.
+    Optionally filters by field of view if robot_heading and fov_degrees are provided.
+
+    Args:
+        robot_position: [x, y] position of robot
+        tag_positions: Dictionary of tag positions (default: APRILTAG_POSITIONS)
+        num_tags: Number of closest tags to return
+        robot_heading: Robot's heading angle in degrees (0 = positive x-axis)
+        fov_degrees: Field of view in degrees (total angle, not half-angle)
+
+    Returns:
+        List of tuples: (tag_id, distance, tag_pos, angle_to_tag)
+    """
+    positions = APRILTAG_POSITIONS
+    robot_x, robot_y = robot_position[0], robot_position[1]
+
+    # Calculate distances and angles to all tags
+    tag_info = []
+    for tag_name, tag_pos in positions.items():
+        tag_id = int(tag_name.replace("tag", ""))
+
+        # Calculate Euclidean distance and angle to tag
+        dx = tag_pos[0] - robot_x
+        dy = tag_pos[1] - robot_y
+        distance = np.sqrt(dx**2 + dy**2)
+        angle = np.degrees(np.arctan2(dy, dx))
+
+        # Check FOV if heading and FOV are provided
+        if robot_heading is not None and fov_degrees is not None:
+            # Calculate relative angle from robot's heading to tag (normalized to [-180, 180])
+            relative_angle = angle - robot_heading
+            while relative_angle > 180:
+                relative_angle -= 360
+            while relative_angle < -180:
+                relative_angle += 360
+
+            # Check if within FOV (symmetric around heading)
+            if abs(relative_angle) > fov_degrees / 2.0:
+                continue  # Skip tags outside FOV
+
+        tag_info.append((tag_id, distance, tag_pos, angle))
+
+    # Sort by distance
+    tag_info.sort(key=lambda x: x[1])
+    return tag_info[:num_tags]
+
+
+def calculate_tag_centroid(robot_position, closest_tags):
+    """
+    Calculate the centroid (average position) of the closest tags.
+    """
+    if not closest_tags or robot_position is None:
+        return None
+
+    # Calculate average position
+    x_sum = sum(tag[2][0] for tag in closest_tags)
+    y_sum = sum(tag[2][1] for tag in closest_tags)
+
+    centroid_x = x_sum / len(closest_tags)
+    centroid_y = y_sum / len(closest_tags)
+
+    return [centroid_x, centroid_y]
+
 
 def distance_measure(frame, results, camera_matrix, tag_size, logger):
     """
@@ -199,7 +278,6 @@ def get_tag_rotation(detection):
 
     return rotation, tag
 
-
 def get_rotation_rvec(rvec, detections):
     """
     Estimate robot rotation from rvec.
@@ -229,7 +307,7 @@ def get_rotation_rvec(rvec, detections):
     R_tag2world, tag_id = get_tag_rotation(detections[-1])
     R_robot_world = R_tag2world @ R_robot
 
-    if tag_id is in [1, 8, 9, 10]:
+    if tag_id in [1, 8, 9, 10]:
         yaw_robot = np.arctan2(R_robot_world[0, 2], R_robot_world[2, 2])
     else:
         yaw_robot = np.arctan2(R_robot_world[1, 0], R_robot_world[0, 0])

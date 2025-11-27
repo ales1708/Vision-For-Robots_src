@@ -118,7 +118,7 @@ class ImageSubscriber(Node):
         detections = multi_scale_marker_detection(
             frame,
             self.detector,
-            scales=[1.5, 2.0, 2.5],
+            scales=[1.5, 2.5, 3.5, 4.5],
             use_clahe=True,
             use_morphology=False,
         )

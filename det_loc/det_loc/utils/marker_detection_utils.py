@@ -97,7 +97,7 @@ def preprocess_image(color_image, scale=2.0, use_clahe=True):
     return image, scale
 
 
-def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5],
+def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.5, 3.5, 4.5],
                                  use_clahe=True, use_morphology=False):
     """
     Detect markers at multiple scales and combine results.

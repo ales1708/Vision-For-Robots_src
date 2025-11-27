@@ -203,16 +203,13 @@ class ImageSubscriber(Node):
             # depth ROI in the center of bbox
             cx = x + w // 2
             cy = y + h // 2
-
-            # # clamp within image - gpt suggestion, not sure if necessary
-            # cx = np.clip(cx, 0, depth.shape[1] - 1)
-            # cy = np.clip(cy, 0, depth.shape[0] - 1)
+            # maybe take mean depth in bbox instead of center pixel?
 
             depth_value = depth[cy, cx] / 1000 # from mm to meters
             depths.append(depth_value)
 
         #4. Move (bad algorithm, only for testing)
-        self.rover_movement(depths)
+        self.rover_movement(detections, depths)
 
         # visualize bboxes on rgb
         # for det in detections:
@@ -223,30 +220,31 @@ class ImageSubscriber(Node):
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
-    def rover_movement(self, depths):
-        min_dist = min((depth for depth in depths), default=None)
-
+    def rover_movement(self, detections, depths, target, filtered_pos, rotation):
         twist = Twist()
 
-        if min_dist is None:
-            # no obstacles
-            twist.linear.x = 0.3
+        z_error = rotation # maybe add some normalization or whatever here, depends on rotation from fiona
+
+        distance_to_target = np.sqrt((filtered_pos[0] - target[0]) ** 2 + (filtered_pos[1] - target[1]) ** 2)
+
+        if distance_to_target < 0.2:
+            speed = 0.1
+        else:
+            speed = 0.5
+        
+        if z_error < 0.4:
+            rotate = 0.5
+        elif z_error > 0.4:
+            rotate = -0.5
+        elif abs(z_error) <= 0.2:
+            rotate = 0.1
+
+        if distance_to_target < 0.05: # risky?
+            twist.linear.x = 0.0
             twist.angular.z = 0.0
         else:
-            if min_dist < 0.3:
-                # stop + turn
-                twist.linear.x = 0.0
-                twist.angular.z = 0.3
-            elif min_dist < 0.5:
-                # slow down
-                twist.linear.x = 0.1
-                twist.angular.z = 0.0
-            else:
-                # failsafe stop
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-
-        self.cmd_vel_pub.publish(twist)
+            twist.linear.x = speed
+            twist.angular.z = rotate
 
 
 def main(args=None):

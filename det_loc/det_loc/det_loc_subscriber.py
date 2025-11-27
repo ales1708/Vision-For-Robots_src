@@ -20,6 +20,7 @@ from .utils.localization_utils import (
     get_rotation_rvec,
     KalmanFilter2D,
 )
+from .utils.camera_panning_utils import ViewTracker
 
 
 class ImageSubscriber(Node):
@@ -179,12 +180,40 @@ class ImageSubscriber(Node):
             filtered_pos = self.kf.update(robot_pos)
             print("filtered position:", filtered_pos)
 
-            rotation = get_rotation_from_tags(detections, filtered_pos)
-            print("rotation from tag positions: ", rotation)
-            rotation_rvec = get_rotation_rvec(rvec, detections)
-            print("rotation from rvec: ", rotation_rvec)
+            robot_rotation, robot_rotation_degrees = get_rotation_rvec(rvec, detections)
+            print("rotation in degrees: ", robot_rotation_degrees)
+
+            self.rover_movement(self, self.target, filtered_pos, robot_rotation_degrees)
 
         cv2.waitKey(1)
+
+    def rover_movement(self, target, filtered_pos, rotation):
+        twist = Twist()
+
+        z_error = rotation  # maybe add some normalization or whatever here, depends on rotation from fiona
+
+        distance_to_target = np.sqrt(
+            (filtered_pos[0] - target[0]) ** 2 + (filtered_pos[1] - target[1]) ** 2
+        )
+
+        if distance_to_target < 0.2:
+            speed = 0.1
+        else:
+            speed = 0.5
+
+        if z_error < 0.4:
+            rotate = 0.5
+        elif z_error > 0.4:
+            rotate = -0.5
+        elif abs(z_error) <= 0.2:
+            rotate = 0.1
+
+        if distance_to_target < 0.05:  # risky?
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+        else:
+            twist.linear.x = speed
+            twist.angular.z = rotate
 
 
 def main(args=None):

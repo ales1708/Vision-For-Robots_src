@@ -64,13 +64,10 @@ def find_closest_tags(robot_position, num_tags=2, robot_heading=None, fov_degree
     return tag_info[:num_tags]
 
 
-def calculate_tag_centroid(robot_position, closest_tags):
+def calculate_tag_centroid(closest_tags):
     """
     Calculate the centroid (average position) of the closest tags.
     """
-    if not closest_tags or robot_position is None:
-        return None
-
     # Calculate average position
     x_sum = sum(tag[2][0] for tag in closest_tags)
     y_sum = sum(tag[2][1] for tag in closest_tags)
@@ -79,6 +76,36 @@ def calculate_tag_centroid(robot_position, closest_tags):
     centroid_y = y_sum / len(closest_tags)
 
     return [centroid_x, centroid_y]
+
+def calculate_pan_to_tags(robot_position, closest_tags, camera_offset=0.0):
+    """
+    Calculate the pan angle needed to center the closest tags in camera view.
+
+    Args:
+        robot_position: [x, y, rotation] robot position (rotation in radians)
+        closest_tags: List of tuples [(tag_id, distance, [x, y]), ...]
+        camera_offset: Camera mounting offset from robot heading (radians, default: 0.0)
+
+    Returns:
+        Pan angle in radians (relative to robot heading) or None if invalid
+    """
+    robot_x, robot_y, robot_heading = robot_position
+
+    centroid = calculate_tag_centroid(closest_tags)
+
+    # Calculate angle from robot to tag centroid (in world frame)
+    dx = centroid[0] - robot_x
+    dy = centroid[1] - robot_y
+    angle_to_centroid = np.arctan2(dy, dx)
+
+    # Calculate pan angle relative to robot heading
+    # Pan angle = (angle to target) - (robot heading) - (camera offset)
+    pan_angle = angle_to_centroid - robot_heading - camera_offset
+
+    # Normalize to [-π, π]
+    pan_angle = (pan_angle + np.pi) % (2 * np.pi) - np.pi
+
+    return pan_angle
 
 
 def distance_measure(frame, results, camera_matrix, tag_size, logger):

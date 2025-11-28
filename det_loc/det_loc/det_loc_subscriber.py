@@ -27,6 +27,16 @@ class ImageSubscriber(Node):
     def __init__(self):
         super().__init__("image_subscriber")
 
+        self.calibration = CameraCalibration()
+        self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.joint_pub = self.create_publisher(JointState, "/ugv/joint_states", 10)
+        self.br = CvBridge()
+        self.last_line = None
+
+        self.rgb_frame_main = None
+        self.rgb_oak = None
+        self.depth_color = None
+
         self.subscription = self.create_subscription(
             CompressedImage,
             "/image_raw/compressed",
@@ -57,14 +67,9 @@ class ImageSubscriber(Node):
         )
         self.ts.registerCallback(self.oak_callback)
 
-        self.calibration = CameraCalibration()
-        self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.joint_pub = self.create_publisher(JointState, "/ugv/joint_states", 10)
-        self.br = CvBridge()
-        self.last_line = None
-
         # Initialize ViewTracker with image center (assuming 640x480 image)
         self.view_tracker = ViewTracker(self.joint_pub, image_center=(320, 240))
+        # self.cv_timer = self.create_timer(0.03, self.cv_gui_step)  # ~33 Hz
 
         # Scanning state
         self.is_scanning = True
@@ -99,6 +104,7 @@ class ImageSubscriber(Node):
 
         # 4. Draw bounding boxes (Visual only)
         vis_image = draw_detections(frame, detections, scale=1.0)
+        self.rgb_frame_main = vis_image
 
         # 5. Perform localization with new dictionary-based system
         if len(detections) >= 2:
@@ -214,8 +220,8 @@ class ImageSubscriber(Node):
             cv2.rectangle(rgb_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
             cv2.circle(rgb_img, (x, y), 5, (255, 0, 0), -1)
 
-        cv2.imshow("Detected Rovers", rgb_img)
-        # cv2.waitKey(1)
+        self.depth_color = depth_color
+        self.rgb_oak = rgb_img
 
     def rover_movement(self):
         """
@@ -285,6 +291,22 @@ class ImageSubscriber(Node):
             twist.angular.z = 0.0
 
         self.cmd_vel_pub.publish(twist)
+
+    def cv_gui_step(self):
+        # Show main camera with tags
+        if self.rgb_frame_main is not None:
+            cv2.imshow("detected tags", self.rgb_frame_main)
+
+        # Show OAK RGB
+        if self.rgb_oak is not None:
+            cv2.imshow("Detected Rovers", self.rgb_oak)
+
+        # Show OAK depth
+        if self.depth_color is not None:
+            cv2.imshow("Depth Compressed", self.depth_color)
+
+        # 🔑 This single waitKey handles ALL windows
+        cv2.waitKey(1)
 
 
 def main(args=None):

@@ -220,6 +220,7 @@ class ImageSubscriber(Node):
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
 
+
     def rover_movement(self, detections, depths, target, filtered_pos, rotation):
         twist = Twist()
 

@@ -1,13 +1,10 @@
 import cv2
 
-
 def rover_detection(frame):
     """Detect UGV rovers in the frame based on color."""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    _, mask = cv2.threshold(
-        gray, 50, 255, cv2.THRESH_BINARY_INV
-    )  # this works much better
+    _, mask = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY_INV) # this works much better
     # _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     mask = cv2.medianBlur(mask, 5)
@@ -22,7 +19,6 @@ def rover_detection(frame):
         rovers.append([x + w // 2, y + h // 2, w, h])
 
     return rovers
-
 
 def overlap_bboxes(rovers):
     """Remove overlapping bounding boxes."""
@@ -44,9 +40,7 @@ def overlap_bboxes(rovers):
     return no_overlap
 
 
-test_img_path = (
-    "det_loc/det_loc/all_imgs/oak_imgs/8Marker_Detection_screenshot_21.11.2025"
-)
+test_img_path = "det_loc/det_loc/all_imgs/oak_imgs/8Marker_Detection_screenshot_21.11.2025"
 if __name__ == "__main__":
     test_img = cv2.imread(test_img_path + ".png")
     detected_rovers = rover_detection(test_img)
@@ -54,9 +48,7 @@ if __name__ == "__main__":
 
     for rover in detected_rovers:
         x, y, w, h = rover
-        cv2.rectangle(
-            test_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2
-        )
+        cv2.rectangle(test_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
         cv2.circle(test_img, (x, y), 5, (255, 0, 0), -1)
 
     cv2.imshow("Detected Rovers", test_img)

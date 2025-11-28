@@ -2,6 +2,7 @@ import rclpy
 from apriltag import apriltag
 import cv2
 import numpy as np
+import message_filters
 from sensor_msgs.msg import Image, CompressedImage
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
@@ -19,6 +20,7 @@ from .utils.localization_utils import (
     KalmanFilter2D,
 )
 from .utils.camera_panning_utils import ViewTracker
+from .utils.rover_detection import rover_detection, overlap_bboxes
 
 
 class ImageSubscriber(Node):
@@ -31,6 +33,29 @@ class ImageSubscriber(Node):
             self.listener_callback,
             10,
         )
+
+        # ---- message_filters subscribers (ROS 2 style) ----
+        self.rgb_sub = message_filters.Subscriber(
+            self,
+            CompressedImage,
+            "/oak/rgb/image_raw/compressed",
+        )
+
+        self.depth_sub = message_filters.Subscriber(
+            self,
+            CompressedImage,
+            "/oak/stereo/image_raw/compressedDepth",
+        )
+
+        # ---- ApproximateTimeSynchronizer ----
+        # queue_size: how many msgs to keep in buffer
+        # slop: allowed time difference between topics (in seconds)
+        self.ts = message_filters.ApproximateTimeSynchronizer(
+            [self.rgb_sub, self.depth_sub],
+            queue_size=10,
+            slop=0.05,
+        )
+        self.ts.registerCallback(self.oak_callback)
 
         self.calibration = CameraCalibration()
         self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
@@ -51,10 +76,11 @@ class ImageSubscriber(Node):
         self.tag_size = 0.160  # meters
         self.kf = KalmanFilter2D(dt=0.05)
         self.target = [1.3, 3.0]  # penalty dot
+        self.filtered_pos = [0.0, 0.0]
+        self.rotation_degrees = 0.0
 
     def listener_callback(self, data):
         """Converts received images to cv2 images and performs localization"""
-
         # 1. Convert to OpenCV
         np_arr = np.frombuffer(data.data, np.uint8)
         raw_frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -73,7 +99,6 @@ class ImageSubscriber(Node):
 
         # 4. Draw bounding boxes (Visual only)
         vis_image = draw_detections(frame, detections, scale=1.0)
-        cv2.imshow("detected tags", vis_image)
 
         # 5. Perform localization with new dictionary-based system
         if len(detections) >= 2:
@@ -102,9 +127,11 @@ class ImageSubscriber(Node):
                 # Apply Kalman filter for position smoothing
                 self.kf.predict()
                 filtered_pos = self.kf.update(robot_pos)
+                self.filtered_pos = filtered_pos
                 
                 # Convert rotation to degrees for display
                 robot_rotation_degrees = np.degrees(robot_rotation)
+                self.rotation_degrees = robot_rotation_degrees
 
                 # Log results
                 self.get_logger().info(
@@ -122,10 +149,75 @@ class ImageSubscriber(Node):
                 twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
 
+        # cv2.imshow("detected tags", vis_image)
 
-        cv2.waitKey(1)
+    def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
+        # ---------- Decode RGB (JPEG) ----------
+        np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
+        rgb_frame = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
 
-    def rover_movement(self, target, filtered_pos, rotation_degrees):
+        # ---------- Decode Depth (compressedDepth) ----------
+        # format example: "16UC1; compressedDepth"
+        depth_fmt, compr_type = depth_msg.format.split(";")
+        depth_fmt = depth_fmt.strip()
+        compr_type = compr_type.strip()
+
+        # 12-byte header before the PNG image
+        depth_header_size = 12
+        raw_depth_data = depth_msg.data[depth_header_size:]
+
+        np_depth = np.frombuffer(raw_depth_data, np.uint8)
+        depth_img = cv2.imdecode(np_depth, cv2.IMREAD_UNCHANGED)
+
+        # If depth image has 3 channels for some reason, take the first
+        if depth_img.ndim == 3:
+            depth_img = depth_img[:, :, 0]
+
+        # ---------- Convert depth to something viewable ----------
+        depth_f = depth_img.astype(np.float32)
+
+        # Optional: inspect min/max once to tune range
+        # print("depth min/max:", float(depth_f.min()), float(depth_f.max()))
+
+        # Clip range for visualization (tune for your setup)
+        depth_f = np.clip(depth_f, 300, 5000)  # e.g. 0.3–5m or similar
+
+        depth_vis = cv2.normalize(depth_f, None, 0, 255, cv2.NORM_MINMAX)
+        depth_vis = depth_vis.astype(np.uint8)
+        depth_color = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
+
+        # 2. Detect obstacles/rovers and remove overlapping bboxes in RGB image
+        detections = rover_detection(rgb_frame)
+        detections = overlap_bboxes(detections)
+
+        # 3. Get distance for each detection w/ depth image
+        depths = []
+        for det in detections:
+            x, y, w, h = det
+
+            # depth ROI in the center of bbox
+            cx = x + w // 2
+            cy = y + h // 2
+            # maybe take mean depth in bbox instead of center pixel?
+
+            depth_value = depth_f[cy - 1, cx - 1] / 1000 # from mm to meters
+            depths.append(depth_value)
+
+        #4. Move (bad algorithm, only for testing)
+        # self.rover_movement()
+
+        # visualize bboxes on rgb
+        np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
+        rgb_img = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
+        for det in detections:
+            x, y, w, h = det
+            cv2.rectangle(rgb_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
+            cv2.circle(rgb_img, (x, y), 5, (255, 0, 0), -1)
+
+        cv2.imshow("Detected Rovers", rgb_img)
+        # cv2.waitKey(1)
+
+    def rover_movement(self):
         """
         Control rover movement towards target.
         
@@ -135,6 +227,10 @@ class ImageSubscriber(Node):
             rotation_degrees: Current robot rotation in degrees
         """
         twist = Twist()
+
+        filtered_pos = self.filtered_pos
+        rotation_degrees = self.rotation_degrees
+        target = self.target
 
         # Calculate angle to target
         target_angle = np.arctan2(

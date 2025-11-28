@@ -16,6 +16,7 @@ from .utils.camera_calibration_utils import CameraCalibration
 from .utils.localization_utils import distance_measure, triangulation_3p, triangulation_2p, KalmanFilter2D, get_rotation_rvec
 from .utils.camera_panning_utils import ViewTracker
 from .utils.rover_detection import rover_detection, overlap_bboxes
+import message_filters
 
 
 class ImageSubscriber(Node):
@@ -29,16 +30,26 @@ class ImageSubscriber(Node):
             10,
         )
 
-        # synchornized subscribers?????? hopefully
-        # Create subscribers using message_filters
-        self.oak_rgb_sub = Subscriber(self, Image, "/oak/rgb/image_raw")
-        self.oak_depth_sub = Subscriber(self, Image, "/oak/depth/image_raw")
+        # ---- message_filters subscribers (ROS 2 style) ----
+        self.rgb_sub = message_filters.Subscriber(
+            self,
+            CompressedImage,
+            "/oak/rgb/image_raw/compressed",
+        )
 
-        # Synchronizer: keeps RGB + depth aligned???
-        self.ts = ApproximateTimeSynchronizer(
-            [self.oak_rgb_sub, self.oak_depth_sub],
+        self.depth_sub = message_filters.Subscriber(
+            self,
+            CompressedImage,
+            "/oak/stereo/image_raw/compressedDepth",
+        )
+
+        # ---- ApproximateTimeSynchronizer ----
+        # queue_size: how many msgs to keep in buffer
+        # slop: allowed time difference between topics (in seconds)
+        self.ts = message_filters.ApproximateTimeSynchronizer(
+            [self.rgb_sub, self.depth_sub],
             queue_size=10,
-            slop=0.05
+            slop=0.05,
         )
         self.ts.registerCallback(self.oak_callback)
 
@@ -48,6 +59,7 @@ class ImageSubscriber(Node):
         self.joint_pub = self.create_publisher(JointState, "/ugv/joint_states", 10)
         self.br = CvBridge()
         self.last_line = None
+        self.pos = []
 
         # Initialize ViewTracker with image center (assuming 640x480 image)
         self.view_tracker = ViewTracker(self.joint_pub, image_center=(320, 240))
@@ -58,7 +70,7 @@ class ImageSubscriber(Node):
         self.scanning_timer = None
 
         # Start scanning after 1 second delay to allow camera to initialize
-        self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
+        # self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
 
         self.angular_speed_list = []
         self.detector = apriltag("tagStandard41h12")
@@ -150,19 +162,19 @@ class ImageSubscriber(Node):
         vis_image = draw_detections(frame, detections, scale=1.0)
 
         # If scanning, update scan data
-        if self.is_scanning and self.scanning_initialized:
-            current_pan = self.view_tracker.pan_controller.get_pan_position()
-            self.view_tracker.update_scan_data(detections, current_pan)
+        # if self.is_scanning and self.scanning_initialized:
+        #     current_pan = self.view_tracker.pan_controller.get_pan_position()
+        #     self.view_tracker.update_scan_data(detections, current_pan)
 
-            # print scanning info in terminal
-            scan_text = f"SCANNING: Pan={current_pan:.2f}"
-            self.get_logger().info(scan_text)
-            self.get_logger().info(f"Detections: {len(detections)}")
+        #     # print scanning info in terminal
+        #     scan_text = f"SCANNING: Pan={current_pan:.2f}"
+        #     self.get_logger().info(scan_text)
+        #     self.get_logger().info(f"Detections: {len(detections)}")
 
         cv2.imshow("detected tags", vis_image)
 
         # Only do localization if scanning is complete
-        if not self.is_scanning:
+        if True:
             # 5. Measure Distance
             # Note: We pass the P_rect_matrix because the image 'frame' is now undistorted.
             # scale=1.0 because coordinates are already adjusted to original image size
@@ -189,14 +201,43 @@ class ImageSubscriber(Node):
 
         cv2.waitKey(1)
     
-    def oak_callback(self, rgb, depth):
-        # 1. Convert to OpenCV
-        rgb = self.br.imgmsg_to_cv2(rgb, desired_encoding="bgr8")
-        frame = cv2.imdecode(rgb, cv2.IMREAD_COLOR)
-        depth = self.br.imgmsg_to_cv2(depth, desired_encoding="16UC1")
+    def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
+        # ---------- Decode RGB (JPEG) ----------
+        np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
+        rgb_frame = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
+
+        # ---------- Decode Depth (compressedDepth) ----------
+        # format example: "16UC1; compressedDepth"
+        depth_fmt, compr_type = depth_msg.format.split(";")
+        depth_fmt = depth_fmt.strip()
+        compr_type = compr_type.strip()
+
+        # 12-byte header before the PNG image
+        depth_header_size = 12
+        raw_depth_data = depth_msg.data[depth_header_size:]
+
+        np_depth = np.frombuffer(raw_depth_data, np.uint8)
+        depth_img = cv2.imdecode(np_depth, cv2.IMREAD_UNCHANGED)
+
+        # If depth image has 3 channels for some reason, take the first
+        if depth_img.ndim == 3:
+            depth_img = depth_img[:, :, 0]
+
+        # ---------- Convert depth to something viewable ----------
+        depth_f = depth_img.astype(np.float32)
+
+        # Optional: inspect min/max once to tune range
+        # print("depth min/max:", float(depth_f.min()), float(depth_f.max()))
+
+        # Clip range for visualization (tune for your setup)
+        depth_f = np.clip(depth_f, 300, 5000)  # e.g. 0.3–5m or similar
+
+        depth_vis = cv2.normalize(depth_f, None, 0, 255, cv2.NORM_MINMAX)
+        depth_vis = depth_vis.astype(np.uint8)
+        depth_color = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
 
         # 2. Detect obstacles/rovers and remove overlapping bboxes in RGB image
-        detections = rover_detection(frame)
+        detections = rover_detection(rgb_frame)
         detections = overlap_bboxes(detections)
 
         # 3. Get distance for each detection w/ depth image
@@ -209,20 +250,26 @@ class ImageSubscriber(Node):
             cy = y + h // 2
             # maybe take mean depth in bbox instead of center pixel?
 
-            depth_value = depth[cy, cx] / 1000 # from mm to meters
+            print(f"cx {cx}, cy {cy}")
+            print(f"depth_f {np.shape(depth_f)}")
+
+            depth_value = depth_f[cy - 1, cx - 1] / 1000 # from mm to meters
             depths.append(depth_value)
 
         #4. Move (bad algorithm, only for testing)
         self.rover_movement(detections, depths)
 
         # visualize bboxes on rgb
-        # for det in detections:
-        #     x, y, w, h = rover
-        #     cv2.rectangle(rgb, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
-        #     cv2.circle(rgb, (x, y), 5, (255, 0, 0), -1)
-        # cv2.imshow("Detected Rovers", rgb)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+        np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
+        rgb_img = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
+        print(f"rgb shape {np.shape(rgb_img)}")
+        for det in detections:
+            x, y, w, h = det
+            cv2.rectangle(rgb_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
+            cv2.circle(rgb_img, (x, y), 5, (255, 0, 0), -1)
+
+        cv2.imshow("Detected Rovers", rgb_img)
+        cv2.waitKey(1)
 
 
     def rover_movement(self, detections, depths, filtered_pos, robot_rotation_degrees):

@@ -115,6 +115,13 @@ class ImageSubscriber(Node):
 
                 # Uncomment to enable rover movement
                 # self.rover_movement(self.target, filtered_pos, robot_rotation_degrees)
+            else:
+                print("Not enough tags found")
+                twist = Twist()
+                twist.linear.x = 0.2
+                twist.angular.z = 0.0
+                self.cmd_vel_pub.publish(twist)
+
 
         cv2.waitKey(1)
 

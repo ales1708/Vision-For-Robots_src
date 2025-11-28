@@ -13,7 +13,7 @@ from .utils.marker_detection_utils import (
     multi_scale_marker_detection,
 )
 from .utils.camera_calibration_utils import CameraCalibration
-from .utils.localization_utils import distance_measure, triangulation_3p, triangulation_2p, KalmanFilter2D
+from .utils.localization_utils import distance_measure, triangulation_3p, triangulation_2p, KalmanFilter2D, get_rotation_rvec
 from .utils.camera_panning_utils import ViewTracker
 from .utils.rover_detection import rover_detection, overlap_bboxes
 
@@ -166,7 +166,7 @@ class ImageSubscriber(Node):
             # 5. Measure Distance
             # Note: We pass the P_rect_matrix because the image 'frame' is now undistorted.
             # scale=1.0 because coordinates are already adjusted to original image size
-            distance_frame, distances = distance_measure(
+            distance_frame, distances, rvec = distance_measure(
                 vis_image,
                 detections,
                 self.calibration.P_rect_matrix,
@@ -182,6 +182,10 @@ class ImageSubscriber(Node):
 
                 self.kf.predict()
                 filtered_pos = self.kf.update(robot_pos)
+
+                robot_rotation, robot_rotation_degrees, tag = get_rotation_rvec(
+                    rvec, detections, filtered_pos
+                )
 
         cv2.waitKey(1)
     
@@ -221,32 +225,49 @@ class ImageSubscriber(Node):
         # cv2.destroyAllWindows()
 
 
-    def rover_movement(self, detections, depths, target, filtered_pos, rotation):
+    def rover_movement(self, detections, depths, filtered_pos, robot_rotation_degrees):
+        min_distance = 0.3 # for obstacle avoidance
+        image_center_x = 320    # assuming 640x480 image
+        center_zone = 80
+
         twist = Twist()
+        obstacle_detected = False
+        steer_direction = 0  # -1: left, 1: right
 
-        z_error = rotation # maybe add some normalization or whatever here, depends on rotation from fiona
+        # 1. Obstacle avoidance
+        for i, det in enumerate(detections):
+            x, _, w, _ = det
+            depth_val = depths[i]
+            bbox_center_x = x + w // 2
+            if depth_val < min_distance and abs(bbox_center_x - image_center_x) < center_zone:
+                obstacle_detected = True
+                steer_direction = 1 if bbox_center_x < image_center_x else -1
+                break
 
-        distance_to_target = np.sqrt((filtered_pos[0] - target[0]) ** 2 + (filtered_pos[1] - target[1]) ** 2)
-
-        if distance_to_target < 0.2:
-            speed = 0.1
-        else:
-            speed = 0.5
-        
-        if z_error < 0.4:
-            rotate = 0.5
-        elif z_error > 0.4:
-            rotate = -0.5
-        elif abs(z_error) <= 0.2:
-            rotate = 0.1
-
-        if distance_to_target < 0.05: # risky?
+        if obstacle_detected:
             twist.linear.x = 0.0
-            twist.angular.z = 0.0
+            twist.angular.z = 0.5 * steer_direction
         else:
-            twist.linear.x = speed
-            twist.angular.z = rotate
+            target_pos = self.target
+            dx = target_pos[0] - filtered_pos[0]
+            dy = target_pos[1] - filtered_pos[1]
+            distance_to_target = np.hypot(dx, dy)
+            target_angle = np.arctan2(dy, dx)
+            angle_error = target_angle - robot_rotation_degrees
+            # Normalize angle error to [-pi, pi]?
+            angle_error = (angle_error + np.pi) % (2 * np.pi) - np.pi
 
+            if distance_to_target < 0.1: # maybe too small/big?
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+            elif abs(angle_error) > 0.15: # radians, also maybe too small?
+                twist.linear.x = 0.0
+                twist.angular.z = 0.5 * np.sign(angle_error)
+            else:
+                twist.linear.x = 0.4
+                twist.angular.z = 0.0
+
+        self.cmd_vel_pub.publish(twist)
 
 def main(args=None):
     rclpy.init(args=args)

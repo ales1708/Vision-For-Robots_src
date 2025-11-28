@@ -1,0 +1,56 @@
+[0.590s] Invoking command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data
+[0.780s] running egg_info
+[0.791s] writing ../build/det_loc/det_loc.egg-info/PKG-INFO
+[0.791s] writing dependency_links to ../build/det_loc/det_loc.egg-info/dependency_links.txt
+[0.791s] writing entry points to ../build/det_loc/det_loc.egg-info/entry_points.txt
+[0.792s] writing requirements to ../build/det_loc/det_loc.egg-info/requires.txt
+[0.792s] writing top-level names to ../build/det_loc/det_loc.egg-info/top_level.txt
+[0.815s] reading manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+[0.816s] writing manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+[0.816s] running build
+[0.816s] running build_py
+[0.817s] copying det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[0.817s] copying det_loc/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[0.817s] copying det_loc/detection_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[0.817s] copying det_loc/det_loc_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[0.817s] creating /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.817s] copying det_loc/utils/camera_panning_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] copying det_loc/utils/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] copying det_loc/utils/rover_detection.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] copying det_loc/utils/camera_calibration_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] copying det_loc/utils/localization_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] copying det_loc/utils/marker_detection_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+[0.818s] running install
+[0.821s] running install_lib
+[0.833s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+[0.833s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/detection_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+[0.833s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/det_loc_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+[0.834s] creating /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/camera_panning_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/rover_detection.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/camera_calibration_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/localization_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/marker_detection_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+[0.834s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/localization_subscriber.py to localization_subscriber.cpython-310.pyc
+[0.836s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/detection_subscriber.py to detection_subscriber.cpython-310.pyc
+[0.838s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/det_loc_subscriber.py to det_loc_subscriber.cpython-310.pyc
+[0.838s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/camera_panning_utils.py to camera_panning_utils.cpython-310.pyc
+[0.839s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/__init__.py to __init__.cpython-310.pyc
+[0.840s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/rover_detection.py to rover_detection.cpython-310.pyc
+[0.840s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/camera_calibration_utils.py to camera_calibration_utils.cpython-310.pyc
+[0.840s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/localization_utils.py to localization_utils.cpython-310.pyc
+[0.841s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/marker_detection_utils.py to marker_detection_utils.cpython-310.pyc
+[0.842s] running install_data
+[0.842s] copying resource/det_loc -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/ament_index/resource_index/packages
+[0.842s] copying package.xml -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc
+[0.842s] running install_egg_info
+[0.855s] removing '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info' (and everything under it)
+[0.855s] Copying ../build/det_loc/det_loc.egg-info to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info
+[0.855s] running install_scripts
+[0.932s] Installing det_loc_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[0.932s] Installing detection_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[0.933s] Installing localization_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[0.933s] Installing rectify_images script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[0.933s] writing list of installed files to '/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log'
+[0.964s] Invoked command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc' returned '0': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data

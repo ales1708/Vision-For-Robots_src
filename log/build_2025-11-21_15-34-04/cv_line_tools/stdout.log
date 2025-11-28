@@ -1,0 +1,23 @@
+running egg_info
+writing ../build/cv_line_tools/cv_line_tools.egg-info/PKG-INFO
+writing dependency_links to ../build/cv_line_tools/cv_line_tools.egg-info/dependency_links.txt
+writing entry points to ../build/cv_line_tools/cv_line_tools.egg-info/entry_points.txt
+writing requirements to ../build/cv_line_tools/cv_line_tools.egg-info/requires.txt
+writing top-level names to ../build/cv_line_tools/cv_line_tools.egg-info/top_level.txt
+reading manifest file '../build/cv_line_tools/cv_line_tools.egg-info/SOURCES.txt'
+writing manifest file '../build/cv_line_tools/cv_line_tools.egg-info/SOURCES.txt'
+running build
+running build_py
+copying cv_line_tools/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build/lib/cv_line_tools
+copying cv_line_tools/better_image_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build/lib/cv_line_tools
+running install
+running install_lib
+running install_data
+copying resource/cv_line_tools -> /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/share/ament_index/resource_index/packages
+copying package.xml -> /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/share/cv_line_tools
+running install_egg_info
+removing '/home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages/cv_line_tools-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../build/cv_line_tools/cv_line_tools.egg-info to /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages/cv_line_tools-0.0.0-py3.10.egg-info
+running install_scripts
+Installing newer_img_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/cv_line_tools
+writing list of installed files to '/home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/install.log'

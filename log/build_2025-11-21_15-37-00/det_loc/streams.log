@@ -1,0 +1,35 @@
+[1.251s] Invoking command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data
+[1.551s] running egg_info
+[1.569s] writing ../build/det_loc/det_loc.egg-info/PKG-INFO
+[1.570s] writing dependency_links to ../build/det_loc/det_loc.egg-info/dependency_links.txt
+[1.570s] writing entry points to ../build/det_loc/det_loc.egg-info/entry_points.txt
+[1.570s] writing requirements to ../build/det_loc/det_loc.egg-info/requires.txt
+[1.570s] writing top-level names to ../build/det_loc/det_loc.egg-info/top_level.txt
+[1.608s] reading manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+[1.610s] writing manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+[1.610s] running build
+[1.610s] running build_py
+[1.610s] copying det_loc/localize.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.611s] copying det_loc/manual_subcriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.611s] copying det_loc/visualize_debug.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.611s] copying det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.611s] copying det_loc/triangulation_test.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.611s] copying det_loc/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.612s] copying det_loc/detection_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.612s] copying det_loc/rec_images.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+[1.612s] running install
+[1.618s] running install_lib
+[1.636s] copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+[1.637s] byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/localization_subscriber.py to localization_subscriber.cpython-310.pyc
+[1.640s] running install_data
+[1.640s] copying resource/det_loc -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/ament_index/resource_index/packages
+[1.641s] copying package.xml -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc
+[1.641s] running install_egg_info
+[1.660s] removing '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info' (and everything under it)
+[1.661s] Copying ../build/det_loc/det_loc.egg-info to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info
+[1.662s] running install_scripts
+[1.787s] Installing detection_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[1.788s] Installing localization_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[1.788s] Installing rectify_images script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+[1.788s] writing list of installed files to '/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log'
+[1.829s] Invoked command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc' returned '0': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data

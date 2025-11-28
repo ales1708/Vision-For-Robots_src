@@ -1,0 +1,40 @@
+running egg_info
+writing ../build/det_loc/det_loc.egg-info/PKG-INFO
+writing dependency_links to ../build/det_loc/det_loc.egg-info/dependency_links.txt
+writing entry points to ../build/det_loc/det_loc.egg-info/entry_points.txt
+writing requirements to ../build/det_loc/det_loc.egg-info/requires.txt
+writing top-level names to ../build/det_loc/det_loc.egg-info/top_level.txt
+reading manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+writing manifest file '../build/det_loc/det_loc.egg-info/SOURCES.txt'
+running build
+running build_py
+copying det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+copying det_loc/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+copying det_loc/detection_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+copying det_loc/det_loc_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc
+copying det_loc/utils/camera_panning_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+copying det_loc/utils/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+copying det_loc/utils/rover_detection.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+copying det_loc/utils/camera_calibration_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+copying det_loc/utils/localization_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+copying det_loc/utils/marker_detection_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils
+running install
+running install_lib
+copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/localization_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/det_loc_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc
+copying /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build/lib/det_loc/utils/localization_utils.py -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils
+byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/localization_subscriber.py to localization_subscriber.cpython-310.pyc
+byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/det_loc_subscriber.py to det_loc_subscriber.cpython-310.pyc
+byte-compiling /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc/utils/localization_utils.py to localization_utils.cpython-310.pyc
+running install_data
+copying resource/det_loc -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/ament_index/resource_index/packages
+copying package.xml -> /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc
+running install_egg_info
+removing '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../build/det_loc/det_loc.egg-info to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages/det_loc-0.0.0-py3.10.egg-info
+running install_scripts
+Installing det_loc_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+Installing detection_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+Installing localization_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+Installing rectify_images script to /home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/det_loc
+writing list of installed files to '/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log'

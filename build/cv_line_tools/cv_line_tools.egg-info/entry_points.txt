@@ -1,0 +1,2 @@
+[console_scripts]
+newer_img_subscriber = cv_line_tools.better_image_subscriber:main

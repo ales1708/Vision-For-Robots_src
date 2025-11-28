@@ -1,0 +1,25 @@
+[1.237s] Invoking command in '/home/aaron/Desktop/Vision-For-Robots_src/cv_line_tools': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/cv_line_tools build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/install.log --single-version-externally-managed install_data
+[1.540s] running egg_info
+[1.558s] writing ../build/cv_line_tools/cv_line_tools.egg-info/PKG-INFO
+[1.559s] writing dependency_links to ../build/cv_line_tools/cv_line_tools.egg-info/dependency_links.txt
+[1.559s] writing entry points to ../build/cv_line_tools/cv_line_tools.egg-info/entry_points.txt
+[1.559s] writing requirements to ../build/cv_line_tools/cv_line_tools.egg-info/requires.txt
+[1.559s] writing top-level names to ../build/cv_line_tools/cv_line_tools.egg-info/top_level.txt
+[1.597s] reading manifest file '../build/cv_line_tools/cv_line_tools.egg-info/SOURCES.txt'
+[1.598s] writing manifest file '../build/cv_line_tools/cv_line_tools.egg-info/SOURCES.txt'
+[1.598s] running build
+[1.599s] running build_py
+[1.599s] copying cv_line_tools/__init__.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build/lib/cv_line_tools
+[1.599s] copying cv_line_tools/better_image_subscriber.py -> /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build/lib/cv_line_tools
+[1.599s] running install
+[1.605s] running install_lib
+[1.623s] running install_data
+[1.623s] copying resource/cv_line_tools -> /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/share/ament_index/resource_index/packages
+[1.624s] copying package.xml -> /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/share/cv_line_tools
+[1.624s] running install_egg_info
+[1.644s] removing '/home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages/cv_line_tools-0.0.0-py3.10.egg-info' (and everything under it)
+[1.644s] Copying ../build/cv_line_tools/cv_line_tools.egg-info to /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages/cv_line_tools-0.0.0-py3.10.egg-info
+[1.645s] running install_scripts
+[1.771s] Installing newer_img_subscriber script to /home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/cv_line_tools
+[1.772s] writing list of installed files to '/home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/install.log'
+[1.818s] Invoked command in '/home/aaron/Desktop/Vision-For-Robots_src/cv_line_tools' returned '0': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/cv_line_tools/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/cv_line_tools build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/cv_line_tools/install.log --single-version-externally-managed install_data

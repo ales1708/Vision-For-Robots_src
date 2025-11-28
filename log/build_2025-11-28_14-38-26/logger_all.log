@@ -1,0 +1,120 @@
+[0.104s] DEBUG:colcon:Command line arguments: ['/home/aaron/miniconda3/envs/ros2_py/bin/colcon', 'build', '--packages-select', 'det_loc']
+[0.104s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=8, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=['det_loc'], packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7b695edeb4c0>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7b695edeafb0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7b695edeafb0>>)
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.134s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.134s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/aaron/Desktop/Vision-For-Robots_src'
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.134s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.155s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.155s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.155s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.155s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.155s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extensions ['ignore', 'ignore_ament_install']
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extension 'ignore'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extension 'ignore_ament_install'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extensions ['colcon_pkg']
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extension 'colcon_pkg'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extensions ['colcon_meta']
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extension 'colcon_meta'
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extensions ['ros']
+[0.156s] Level 1:colcon.colcon_core.package_identification:_identify(cv_line_tools) by extension 'ros'
+[0.158s] DEBUG:colcon.colcon_core.package_identification:Package 'cv_line_tools' with type 'ros.ament_python' and name 'cv_line_tools'
+[0.158s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extensions ['ignore', 'ignore_ament_install']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extension 'ignore'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extension 'ignore_ament_install'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extensions ['colcon_pkg']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extension 'colcon_pkg'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extensions ['colcon_meta']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extension 'colcon_meta'
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extensions ['ros']
+[0.159s] Level 1:colcon.colcon_core.package_identification:_identify(det_loc) by extension 'ros'
+[0.160s] DEBUG:colcon.colcon_core.package_identification:Package 'det_loc' with type 'ros.ament_python' and name 'det_loc'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.160s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.160s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.160s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.160s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.160s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.160s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.175s] INFO:colcon.colcon_core.package_selection:Skipping not selected package 'cv_line_tools' in 'cv_line_tools'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_args' from command line to 'None'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_target' from command line to 'None'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_clean_cache' from command line to 'False'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_clean_first' from command line to 'False'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'cmake_force_configure' from command line to 'False'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'ament_cmake_args' from command line to 'None'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'catkin_cmake_args' from command line to 'None'
+[0.176s] Level 5:colcon.colcon_core.verb:set package 'det_loc' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.176s] DEBUG:colcon.colcon_core.verb:Building package 'det_loc' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc', 'merge_install': False, 'path': '/home/aaron/Desktop/Vision-For-Robots_src/det_loc', 'symlink_install': False, 'test_result_base': None}
+[0.176s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.177s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.178s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc' with build type 'ament_python'
+[0.178s] Level 1:colcon.colcon_core.shell:create_environment_hook('det_loc', 'ament_prefix_path')
+[0.180s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.180s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/ament_prefix_path.ps1'
+[0.181s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/ament_prefix_path.dsv'
+[0.182s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/ament_prefix_path.sh'
+[0.183s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.183s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.358s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc'
+[0.358s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.358s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.777s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data
+[1.163s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/aaron/Desktop/Vision-For-Robots_src/det_loc' returned '0': CONDA_PROMPT_MODIFIER=(ros2_py) PYTHONPATH=/home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/prefix_override:/home/aaron/miniconda3/envs/ros2_py/lib/python3.10/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages:${PYTHONPATH} /home/aaron/miniconda3/envs/ros2_py/bin/python -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/det_loc build --build-base /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/build install --record /home/aaron/Desktop/Vision-For-Robots_src/build/det_loc/install.log --single-version-externally-managed install_data
+[1.167s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc' for CMake module files
+[1.167s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc' for CMake config files
+[1.169s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib'
+[1.169s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/bin'
+[1.169s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/pkgconfig/det_loc.pc'
+[1.170s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/lib/python3.10/site-packages'
+[1.170s] Level 1:colcon.colcon_core.shell:create_environment_hook('det_loc', 'pythonpath')
+[1.170s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/pythonpath.ps1'
+[1.172s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/pythonpath.dsv'
+[1.173s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/hook/pythonpath.sh'
+[1.175s] Level 1:colcon.colcon_core.environment:checking '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/bin'
+[1.175s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(det_loc)
+[1.176s] INFO:colcon.colcon_core.shell:Creating package script '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/package.ps1'
+[1.178s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/package.dsv'
+[1.180s] INFO:colcon.colcon_core.shell:Creating package script '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/package.sh'
+[1.183s] INFO:colcon.colcon_core.shell:Creating package script '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/package.bash'
+[1.186s] INFO:colcon.colcon_core.shell:Creating package script '/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/det_loc/package.zsh'
+[1.188s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/aaron/Desktop/Vision-For-Robots_src/install/det_loc/share/colcon-core/packages/det_loc)
+[1.189s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[1.189s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[1.190s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[1.190s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[1.193s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify2': 'notify2' not found
+[1.193s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[1.194s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[1.194s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify_send'
+[1.233s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[1.233s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/aaron/Desktop/Vision-For-Robots_src/install/local_setup.ps1'
+[1.237s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/aaron/Desktop/Vision-For-Robots_src/install/_local_setup_util_ps1.py'
+[1.242s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/aaron/Desktop/Vision-For-Robots_src/install/setup.ps1'
+[1.245s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/aaron/Desktop/Vision-For-Robots_src/install/local_setup.sh'
+[1.247s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/aaron/Desktop/Vision-For-Robots_src/install/_local_setup_util_sh.py'
+[1.249s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/aaron/Desktop/Vision-For-Robots_src/install/setup.sh'
+[1.253s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/aaron/Desktop/Vision-For-Robots_src/install/local_setup.bash'
+[1.255s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/aaron/Desktop/Vision-For-Robots_src/install/setup.bash'
+[1.258s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/aaron/Desktop/Vision-For-Robots_src/install/local_setup.zsh'
+[1.259s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/aaron/Desktop/Vision-For-Robots_src/install/setup.zsh'

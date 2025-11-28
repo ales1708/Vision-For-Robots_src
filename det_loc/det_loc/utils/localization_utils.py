@@ -185,3 +185,98 @@ class KalmanFilter2D:
         self.P = (np.eye(4) - K @ self.H) @ self.P
 
         return self.x[:2].flatten()
+
+
+def get_tag_rotation(detection):
+    april_tags_rotations = {
+        # "tag1": [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],  # 180
+        # "tag2": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        # "tag3": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        # "tag4": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        # "tag5": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        # "tag6": [[0, -1, 0], [1, 0, 0], [0, 0, 1]],  # 90
+        # "tag7": [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],  # 270
+        # "tag8": np.eye(3),  # 0
+        # "tag9": np.eye(3),  # 0
+        # "tag10": np.eye(3),  # 0
+        "tag1": np.pi,  # 180
+        "tag2": 0.5 * np.pi,  # 90
+        "tag3": 1.5 * np.pi,  # 270
+        "tag4": 0.5 * np.pi,  # 90
+        "tag5": 1.5 * np.pi,  # 270
+        "tag6": 0.5 * np.pi,  # 90
+        "tag7": 1.5 * np.pi,  # 270
+        "tag8": 0,  # 0
+        "tag9": 0,  # 0
+        "tag10": 0,  # 0
+    }
+    tag = detection["id"]
+    rotation = april_tags_rotations[f"tag{tag}"]
+
+    return np.array(rotation), tag
+
+
+def get_tag_positions(detections):
+    """
+    Retrieves the location of detected tags
+
+    Args:
+        detections: 2 detected tags
+
+    Returns:
+        x and y coordinates of both tags
+    """
+    april_tags = {
+        "tag1": [9.0, 3.0],
+        "tag2": [7.350, 0.0],
+        "tag3": [7.350, 6.0],
+        "tag4": [4.5, 0.0],
+        "tag5": [4.5, 6.0],
+        "tag6": [2.644, -0.28],
+        "tag7": [2.644, 6.78],
+        "tag8": [0, 0.144],
+        "tag9": [0.0, 3.0],
+        "tag10": [0.0, 5.866],
+    }
+
+    # get detected tags
+    a = detections[0]["id"]
+    b = detections[1]["id"]
+
+    # Verify tags exist in dict
+    if f"tag{a}" not in april_tags or f"tag{b}" not in april_tags:
+        print(f"Tag ID {a} or {b} not found in map")
+        return [0.0, 0.0]
+
+    [ax, ay] = april_tags[f"tag{a}"]
+    [bx, by] = april_tags[f"tag{b}"]
+    return ax, ay, bx, by
+
+
+
+def get_rotation_rvec(rvec, detections, robot_pos):
+    """
+    Estimate robot rotation from rvec.
+
+    Args:
+        rvec: rotation vector of rotation between tag and robot
+        detections: detected tags
+
+    Returns:
+        Estimated rotation angle (degrees)
+    """
+
+    # get
+    # R_cam_to_tag, _ = cv2.Rodrigues(rvec)
+    # yaw = np.arctan2(R_cam_to_tag[1, 0], R_cam_to_tag[0, 0])
+    # tag_pos = get_tag_positions(detections[-1])
+    _, _, bx, by = get_tag_positions(detections[-2:])
+    tag_robot_yaw = np.arctan2(robot_pos[1] - by, robot_pos[0] - bx)
+    tag_global_yaw, tag = get_tag_rotation(detections[-1])  # use last detection
+    robot_yaw = tag_global_yaw + np.pi + tag_robot_yaw
+    # robot_yaw = (robot_yaw + np.pi) % (2 * np.pi) - np.pi # normalize to [-pi, pi]
+    robot_yaw = robot_yaw % (2 * np.pi)  # normalize to [0, 2pi]
+
+    robot_yaw_degrees = robot_yaw * 180 / np.pi
+
+    return robot_yaw, robot_yaw_degrees, tag

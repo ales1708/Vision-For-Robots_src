@@ -245,7 +245,7 @@ class ImageSubscriber(Node):
                 break
 
         if obstacle_detected:
-            twist.linear.x = 0.0
+            twist.linear.x = 0.2 # move a little bit away whilst turning
             twist.angular.z = 0.5 * steer_direction
         else:
             target_pos = self.target

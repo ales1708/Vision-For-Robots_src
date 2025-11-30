@@ -37,6 +37,7 @@ class ImageSubscriber(Node):
         self.rgb_oak = None
         self.depth_color = None
 
+        # pan-tilt camera subscription
         self.subscription = self.create_subscription(
             CompressedImage,
             "/image_raw/compressed",
@@ -44,20 +45,21 @@ class ImageSubscriber(Node):
             10,
         )
 
-        # ---- message_filters subscribers (ROS 2 style) ----
+        # OAK-D rgb subscription
         self.rgb_sub = message_filters.Subscriber(
             self,
             CompressedImage,
             "/oak/rgb/image_raw/compressed",
         )
 
+        # OAK-D depth subscription
         self.depth_sub = message_filters.Subscriber(
             self,
             CompressedImage,
             "/oak/stereo/image_raw/compressedDepth",
         )
 
-        # ---- ApproximateTimeSynchronizer ----
+        # ApproximateTimeSynchronizer
         # queue_size: how many msgs to keep in buffer
         # slop: allowed time difference between topics (in seconds)
         self.ts = message_filters.ApproximateTimeSynchronizer(
@@ -84,6 +86,9 @@ class ImageSubscriber(Node):
         self.target = [1.3, 3.0]  # penalty dot
         self.filtered_pos = [0.0, 0.0]
         self.rotation_degrees = 0.0
+
+        self.detections = []
+        self.depths = []
 
     def publish_forward_speed(self, linear_x, angular_z=0.0):
         twist = Twist()
@@ -159,7 +164,7 @@ class ImageSubscriber(Node):
             use_morphology=False,
         )
 
-        # 4. Draw bounding boxes (Visual only)
+        # 4. Draw bounding boxes
         vis_image = draw_detections(frame, detections, scale=1.0)
         self.rgb_frame_main = vis_image
 
@@ -178,29 +183,29 @@ class ImageSubscriber(Node):
                 self.get_logger(),
             )
 
-            # Filter out invalid detections
+            # 6. Filter out invalid detections
             valid_detections = [
                 d for d in detections_info
                 if d['distance'] is not None and d['tvec'] is not None
             ]
 
             if len(valid_detections) >= 2:
-                # Perform triangulation with rotation
+                # 7. Perform triangulation with rotation
                 if len(valid_detections) >= 3:
                     robot_pos, robot_rotation = triangulation_3p(valid_detections)
                 else:
                     robot_pos, robot_rotation = triangulation_2p(valid_detections[:2])
 
-                # Apply Kalman filter for position smoothing
+                # 8. Apply Kalman filter for position smoothing
                 self.kf.predict()
                 filtered_pos = self.kf.update(robot_pos)
                 self.filtered_pos = filtered_pos
 
-                # Convert rotation to degrees for display
+                # 9. Convert rotation to degrees for display
                 robot_rotation_degrees = np.degrees(robot_rotation)
                 self.rotation_degrees = robot_rotation_degrees
 
-                # Log results
+                # 10. Log results
                 self.get_logger().info(
                     f"Position: ({filtered_pos[0]:.3f}, {filtered_pos[1]:.3f}) | "
                     f"Rotation: {robot_rotation_degrees:.1f}° | "
@@ -208,24 +213,26 @@ class ImageSubscriber(Node):
                 )
 
                 self.rover_movement()
-            else:
-                self.get_logger().info("Not enough tags found")
+            else: # not enough valid tags found
+                self.get_logger().info("Not enough valid tags found")
                 self.publish_forward_speed(0.2)
         else: # not enough tags found or currently scanning
             if self.is_scanning and self.scanning_initialized: # continuing to scan
                 self.publish_forward_speed(0.1)
             else: # starting new scan
-                self.get_logger().info("Not enough tags found starting new scan")
+                self.get_logger().info("Not enough tags found, starting new scan")
                 self.start_initial_scan()
                 self.publish_forward_speed(0.1)
 
 
     def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
-        # ---------- Decode RGB (JPEG) ----------
+        """Converts OAK-D images to cv2 images and performs rover detection."""
+        # 1. Obtain rgb and depth images from OAK-D
+        # Decode RGB (JPEG)
         np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
         rgb_frame = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
 
-        # ---------- Decode Depth (compressedDepth) ----------
+        # Decode Depth (compressedDepth)
         # format example: "16UC1; compressedDepth"
         depth_fmt, compr_type = depth_msg.format.split(";")
         depth_fmt = depth_fmt.strip()
@@ -242,14 +249,9 @@ class ImageSubscriber(Node):
         if depth_img.ndim == 3:
             depth_img = depth_img[:, :, 0]
 
-        # ---------- Convert depth to something viewable ----------
+        # Convert depth to something viewable
         depth_f = depth_img.astype(np.float32)
-
-        # Optional: inspect min/max once to tune range
-        # print("depth min/max:", float(depth_f.min()), float(depth_f.max()))
-
-        # Clip range for visualization (tune for your setup)
-        depth_f = np.clip(depth_f, 300, 5000)  # e.g. 0.3–5m or similar
+        depth_f = np.clip(depth_f, 300, 5000)  # 0.3–5m
 
         depth_vis = cv2.normalize(depth_f, None, 0, 255, cv2.NORM_MINMAX)
         depth_vis = depth_vis.astype(np.uint8)
@@ -267,15 +269,11 @@ class ImageSubscriber(Node):
             # depth ROI in the center of bbox
             cx = x + w // 2
             cy = y + h // 2
-            # maybe take mean depth in bbox instead of center pixel?
 
             depth_value = depth_f[cy - 1, cx - 1] / 1000 # from mm to meters
             depths.append(depth_value)
 
-        #4. Move (bad algorithm, only for testing)
-        # self.rover_movement()
-
-        # visualize bboxes on rgb
+        # visualize bboxes on rgb (optional)
         np_rgb = np.frombuffer(rgb_msg.data, np.uint8)
         rgb_img = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
         for det in detections:
@@ -285,6 +283,8 @@ class ImageSubscriber(Node):
 
         self.depth_color = depth_color
         self.rgb_oak = rgb_img
+        self.detections = detections
+        self.depths = depths
 
     def rover_movement(self):
         """
@@ -296,6 +296,12 @@ class ImageSubscriber(Node):
             rotation_degrees: Current robot rotation in degrees
         """
         twist = Twist()
+
+        min_distance = 0.3 # for obstacle avoidance
+        image_center_x = 640    # assuming 1280xsomething image
+        center_zone = 300
+        obstacle_detected = False
+        steer_direction = 0  # -1: left, 1: right
 
         filtered_pos = self.filtered_pos
         rotation_degrees = self.rotation_degrees
@@ -311,7 +317,7 @@ class ImageSubscriber(Node):
         # Calculate turn needed
         turn_to_target = rotation_degrees - target_angle_degrees
 
-        # Normalize to [-180, 180]
+        # Normalize to [-180, 180] degrees
         turn_to_target = (turn_to_target + 180) % 360 - 180
 
         # Calculate distance to target
@@ -319,39 +325,52 @@ class ImageSubscriber(Node):
             (filtered_pos[0] - target[0]) ** 2 +
             (filtered_pos[1] - target[1]) ** 2
         )
+        for i, det in enumerate(self.detections):
+            x, _, w, _ = det
+            depth_val = self.depths[i]
+            bbox_center_x = x + w // 2
+            if depth_val < min_distance and abs(bbox_center_x - image_center_x) < center_zone:
+                obstacle_detected = True
+                steer_direction = 1 if bbox_center_x < image_center_x else -1
+                break
 
-        # Determine speeds based on distance
-        if distance_to_target < 0.2:
-            speed = 0.1
+        if obstacle_detected:
+            # move a little bit to the side to avoid obstacle
+            twist.linear.x = 0.2
+            twist.angular.z = 0.5 * steer_direction
         else:
-            speed = 0.5
+            # Determine speeds based on distance
+            if distance_to_target < 0.2:
+                speed = 0.1
+            else:
+                speed = 0.3
 
-        # Determine rotation based on angle error
-        if abs(turn_to_target) > 30:
-            rotate = 0.5 if turn_to_target < 0 else -0.5
-        elif abs(turn_to_target) > 10:
-            rotate = 0.3 if turn_to_target < 0 else -0.3
-        else:
-            rotate = 0.0
+            # Determine rotation based on angle error
+            if abs(turn_to_target) > 30:
+                rotate = 0.5 if turn_to_target < 0 else -0.5
+            elif abs(turn_to_target) > 10:
+                rotate = 0.3 if turn_to_target < 0 else -0.3
+            else:
+                rotate = 0.0
 
-        self.get_logger().info(
-            f"Target angle: {target_angle_degrees:.1f}°, Turn needed: {turn_to_target:.1f}°, "
-            f"Distance: {distance_to_target:.3f}m"
-        )
+            self.get_logger().info(
+                f"Target angle: {target_angle_degrees:.1f}°, Turn needed: {turn_to_target:.1f}°, "
+                f"Distance: {distance_to_target:.3f}m"
+            )
 
-        # Set movement commands
-        if distance_to_target < 0.05:
-            # Reached target
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-        elif rotate != 0:
-            # Need to turn first
-            twist.linear.x = 0.0
-            twist.angular.z = rotate
-        else:
-            # Move forward
-            twist.linear.x = speed
-            twist.angular.z = 0.0
+            # Set movement commands
+            if distance_to_target < 0.05:
+                # Reached target
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+            elif rotate != 0:
+                # Need to turn first
+                twist.linear.x = speed * 0.5 # slower when turning
+                twist.angular.z = rotate
+            else:
+                # Move forward
+                twist.linear.x = speed
+                twist.angular.z = 0.0
 
         self.cmd_vel_pub.publish(twist)
 

@@ -50,32 +50,14 @@ class Pan_Controller:
 
     def adjust_pan_to_center(self, center_error_x, image_center_x):
         """Calculate required pan adjustment to center detected tags
-
-        Args:
-            center_error_x: Horizontal pixel error (average tag center X - image center X)
-            image_center_x: X coordinate of image center (for reference)
-
-        Returns:
-            Required pan adjustment in radians (negative = pan left, positive = pan right)
         """
-        # Convert pixel error to pan angle adjustment
-        # Negative error means tags are left of center, need to pan left (negative)
-        # Positive error means tags are right of center, need to pan right (positive)
         adjustment = -center_error_x * self.tracking_gain
-
-        # Clamp adjustment to max allowed
         adjustment = np.clip(adjustment, -self.max_tracking_adjustment, self.max_tracking_adjustment)
 
         return adjustment
 
     def apply_tracking_adjustment(self, adjustment):
         """Apply pan adjustment for tracking and publish new position
-
-        Args:
-            adjustment: Pan adjustment in radians
-
-        Returns:
-            True if adjustment was applied, False if limits prevented it
         """
         new_position = self.pan_position + adjustment
 
@@ -105,14 +87,13 @@ class ViewTracker:
         self.pan_controller = Pan_Controller(pan_publisher)
         self.image_center = image_center
 
-        # Scanning data storage
         self.scan_data = []  # List of dicts with {pan_position, num_detections, center_error}
         self.current_scan_accumulator = []  # Accumulate data for current pan position
-        self.frames_per_position = 10  # Number of frames to average per position (balanced for accuracy and speed)
+        self.frames_per_position = 1  # Number of frames to average per position
 
         # Tracking state management
         self.tracking_enabled = False
-        self.center_error_threshold = 50.0  # pixels - only adjust if exceeded
+        self.center_error_threshold = 200.0
 
     def initial_scanning(self):
         """Reset and start scanning operation"""
@@ -136,7 +117,6 @@ class ViewTracker:
             'center_error': center_error
         })
 
-        # Average over multiple frames at the same position (approximately)
         if len(self.current_scan_accumulator) >= self.frames_per_position:
             avg_data = self._average_scan_data()
             self.scan_data.append(avg_data)
@@ -164,26 +144,18 @@ class ViewTracker:
         }
 
     def track_view(self, scan_data_point):
-        """Track the best view based on number of detections and center error
-
-        Priority: Having at least 2 detections is critical, then minimize center error
-        """
-        if scan_data_point is None:
-            return
-
+        """Track the best view based on number of detections and center error"""
         num_detections = scan_data_point['num_detections']
         center_error = scan_data_point['center_error']
 
-        if num_detections >= 2 and center_error != float('inf'):
-            # Valid view: High base score, heavily penalize center error
-            # Score = 10000 + bonus for extra detections - (center_error * 10)
-            score = 10000 + (num_detections - 2) * 50 - (center_error * 10)
-        elif num_detections == 1 and center_error != float('inf'):
-            # Suboptimal: Only 1 detection, much lower score
-            score = 1000 - (center_error * 5)
+        if num_detections == 0 or center_error == float('inf'):
+            score = 0
+        elif num_detections == 1:
+            score = 1 - center_error
         else:
-            # Invalid: No detections or infinite error
-            score = 0.0
+            score = num_detections - center_error
+
+        print(f"num detections: {num_detections}, center error: {center_error}, score: {score}")
 
         if score > self.best_view_score:
             self.best_view_score = score
@@ -197,11 +169,9 @@ class ViewTracker:
 
         total_error = 0.0
         for detection in detections:
-            # Get center of detection
             center_x = detection['center'][0]
             center_y = detection['center'][1]
 
-            # Calculate Euclidean distance from image center
             error = np.sqrt(
                 (center_x - self.image_center[0])**2 +
                 (center_y - self.image_center[1])**2
@@ -232,38 +202,20 @@ class ViewTracker:
 
     def check_and_adjust_tracking(self, detections):
         """Check if tags need re-centering and adjust pan if necessary
-
-        Args:
-            detections: List of detected AprilTags
-
-        Returns:
-            Tuple of (adjusted: bool, error_x: float, adjustment: float)
-            - adjusted: Whether pan was adjusted
-            - error_x: Horizontal error in pixels
-            - adjustment: Pan adjustment applied in radians (0 if not adjusted)
         """
         if not self.tracking_enabled or not detections:
             return False, 0.0, 0.0
 
-        # Calculate average center position of all detected tags
         avg_center_x = np.mean([det['center'][0] for det in detections])
-
-        # Compute horizontal error from image center
         error_x = avg_center_x - self.image_center[0]
 
-        # Check if error exceeds threshold
         if abs(error_x) > self.center_error_threshold:
-            # Calculate required adjustment
             adjustment = self.pan_controller.adjust_pan_to_center(error_x, self.image_center[0])
-
-            # Apply adjustment
             success = self.pan_controller.apply_tracking_adjustment(adjustment)
 
             if success:
                 return True, error_x, adjustment
             else:
-                # At pan limit, couldn't adjust
                 return False, error_x, 0.0
 
-        # Error within threshold, no adjustment needed
         return False, error_x, 0.0

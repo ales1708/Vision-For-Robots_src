@@ -69,12 +69,13 @@ class ImageSubscriber(Node):
 
         # Initialize ViewTracker with image center (assuming 640x480 image)
         self.view_tracker = ViewTracker(self.joint_pub, image_center=(320, 240))
-        # self.cv_timer = self.create_timer(0.03, self.cv_gui_step)  # ~33 Hz
+        self.cv_timer = self.create_timer(0.03, self.cv_gui_step)  # ~33 Hz
 
         # Scanning state
         self.is_scanning = True
         self.scanning_initialized = False
         self.scanning_timer = None
+        self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
 
         self.angular_speed_list = []
         self.detector = apriltag("tagStandard41h12")
@@ -83,6 +84,62 @@ class ImageSubscriber(Node):
         self.target = [1.3, 3.0]  # penalty dot
         self.filtered_pos = [0.0, 0.0]
         self.rotation_degrees = 0.0
+
+    def publish_forward_speed(self, linear_x, angular_z=0.0):
+        twist = Twist()
+        twist.linear.x = float(linear_x)
+        twist.angular.z = float(angular_z)
+        self.cmd_vel_pub.publish(twist)
+
+    def start_initial_scan(self):
+        """Initialize the scanning operation."""
+        self.get_logger().info("Starting initial scan...")
+
+        self.is_scanning = True
+        self.scanning_initialized = True
+
+        self.view_tracker.initial_scanning()
+        self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
+
+        if self.initial_timer:
+            self.destroy_timer(self.initial_timer)
+            self.initial_timer = None
+
+
+    def execute_scan_step(self):
+        """Execute a single step of the scanning operation."""
+        if self.view_tracker.is_scanning_complete():
+            self.finish_scanning()
+            return
+
+        self.view_tracker.pan_controller.scanning_step()
+
+
+    def finish_scanning(self):
+        """Finish the scanning operation and report results."""
+        self.is_scanning = False
+        self.scanning_initialized = False
+
+        if self.scanning_timer:
+            self.destroy_timer(self.scanning_timer)
+            self.scanning_timer = None
+
+        best_view = self.view_tracker.get_best_view()
+        if best_view:
+            self.get_logger().info(
+                "Scan complete | Best view: "
+                f"Pan={best_view['pan_position']:.3f}rad, "
+                f"Det={best_view['num_detections']:.1f}, "
+                f"CenterErr={best_view['center_error']:.1f}px "
+            )
+
+            # Move to best view and enable tracking
+            self.view_tracker.move_to_best_view()
+            self.view_tracker.enable_tracking()
+            self.get_logger().info("Moved to best view. Tracking enabled.")
+        else:
+            self.view_tracker.initial_scanning()
+            self.get_logger().warn("Scan complete. No valid views found!")
 
     def listener_callback(self, data):
         """Converts received images to cv2 images and performs localization"""
@@ -106,8 +163,12 @@ class ImageSubscriber(Node):
         vis_image = draw_detections(frame, detections, scale=1.0)
         self.rgb_frame_main = vis_image
 
+        if self.is_scanning and self.scanning_initialized:
+            current_pan = self.view_tracker.pan_controller.get_pan_position()
+            self.view_tracker.update_scan_data(detections, current_pan)
+
         # 5. Perform localization with new dictionary-based system
-        if len(detections) >= 2:
+        if len(detections) >= 2 and not self.is_scanning:
             # Measure distances and get detailed detection info
             distance_frame, detections_info, rvecs = distance_measure(
                 vis_image,
@@ -119,7 +180,7 @@ class ImageSubscriber(Node):
 
             # Filter out invalid detections
             valid_detections = [
-                d for d in detections_info 
+                d for d in detections_info
                 if d['distance'] is not None and d['tvec'] is not None
             ]
 
@@ -134,7 +195,7 @@ class ImageSubscriber(Node):
                 self.kf.predict()
                 filtered_pos = self.kf.update(robot_pos)
                 self.filtered_pos = filtered_pos
-                
+
                 # Convert rotation to degrees for display
                 robot_rotation_degrees = np.degrees(robot_rotation)
                 self.rotation_degrees = robot_rotation_degrees
@@ -146,16 +207,18 @@ class ImageSubscriber(Node):
                     f"Tags: {[d['id'] for d in valid_detections[:2]]}"
                 )
 
-                # Uncomment to enable rover movement
-                # self.rover_movement(self.target, filtered_pos, robot_rotation_degrees)
+                self.rover_movement()
             else:
-                print("Not enough tags found")
-                twist = Twist()
-                twist.linear.x = 0.2
-                twist.angular.z = 0.0
-                self.cmd_vel_pub.publish(twist)
+                self.get_logger().info("Not enough tags found")
+                self.publish_forward_speed(0.2)
+        else: # not enough tags found or currently scanning
+            if self.is_scanning and self.scanning_initialized: # continuing to scan
+                self.publish_forward_speed(0.1)
+            else: # starting new scan
+                self.get_logger().info("Not enough tags found starting new scan")
+                self.start_initial_scan()
+                self.publish_forward_speed(0.1)
 
-        # cv2.imshow("detected tags", vis_image)
 
     def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
         # ---------- Decode RGB (JPEG) ----------
@@ -226,7 +289,7 @@ class ImageSubscriber(Node):
     def rover_movement(self):
         """
         Control rover movement towards target.
-        
+
         Args:
             target: [x, y] target position
             filtered_pos: [x, y] current robot position
@@ -240,20 +303,20 @@ class ImageSubscriber(Node):
 
         # Calculate angle to target
         target_angle = np.arctan2(
-            target[1] - filtered_pos[1], 
+            target[1] - filtered_pos[1],
             target[0] - filtered_pos[0]
         )
         target_angle_degrees = np.degrees(target_angle)
-        
+
         # Calculate turn needed
         turn_to_target = rotation_degrees - target_angle_degrees
-        
+
         # Normalize to [-180, 180]
         turn_to_target = (turn_to_target + 180) % 360 - 180
-        
+
         # Calculate distance to target
         distance_to_target = np.sqrt(
-            (filtered_pos[0] - target[0]) ** 2 + 
+            (filtered_pos[0] - target[0]) ** 2 +
             (filtered_pos[1] - target[1]) ** 2
         )
 
@@ -297,15 +360,14 @@ class ImageSubscriber(Node):
         if self.rgb_frame_main is not None:
             cv2.imshow("detected tags", self.rgb_frame_main)
 
-        # Show OAK RGB
-        if self.rgb_oak is not None:
-            cv2.imshow("Detected Rovers", self.rgb_oak)
+        # # Show OAK RGB
+        # if self.rgb_oak is not None:
+        #     cv2.imshow("Detected Rovers", self.rgb_oak)
 
-        # Show OAK depth
-        if self.depth_color is not None:
-            cv2.imshow("Depth Compressed", self.depth_color)
+        # # Show OAK depth
+        # if self.depth_color is not None:
+        #     cv2.imshow("Depth Compressed", self.depth_color)
 
-        # 🔑 This single waitKey handles ALL windows
         cv2.waitKey(1)
 
 

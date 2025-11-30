@@ -14,7 +14,7 @@ class Pan_Controller:
         self.scanning_complete = False
 
         # Dynamic tracking parameters
-        self.tracking_gain = 0.002  # radians per pixel of error
+        self.tracking_gain = 0.003  # radians per pixel of error
         self.max_tracking_adjustment = 0.1  # max radians per adjustment
 
     def set_pan_position(self, pan_position):
@@ -93,13 +93,18 @@ class ViewTracker:
 
         # Tracking state management
         self.tracking_enabled = False
-        self.center_error_threshold = 200.0
+        self.center_error_threshold = 60.0  # pixels from center before adjustment
 
     def initial_scanning(self):
         """Reset and start scanning operation"""
         self.pan_controller.reset_scanning_position()
         self.scan_data = []
         self.current_scan_accumulator = []
+
+        # Reset best view tracking for fresh scan
+        self.best_view = None
+        self.best_view_score = 0.0
+        self.best_view_pan_position = 0.0
 
     def is_scanning_complete(self):
         """Check if scanning operation is complete"""
@@ -144,18 +149,16 @@ class ViewTracker:
         }
 
     def track_view(self, scan_data_point):
-        """Track the best view based on number of detections and center error"""
+        """Track the best view based on number of detections and center error."""
         num_detections = scan_data_point['num_detections']
         center_error = scan_data_point['center_error']
 
         if num_detections == 0 or center_error == float('inf'):
-            score = 0
-        elif num_detections == 1:
-            score = 1 - center_error
+            score = 0.0
         else:
-            score = num_detections - center_error
-
-        print(f"num detections: {num_detections}, center error: {center_error}, score: {score}")
+            max_center_error = np.sqrt(self.image_center[0]**2 + self.image_center[1]**2)
+            normalized_error = min(center_error / max_center_error, 1.0)
+            score = num_detections * (1.0 - normalized_error)
 
         if score > self.best_view_score:
             self.best_view_score = score

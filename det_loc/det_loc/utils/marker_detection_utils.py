@@ -14,13 +14,6 @@ from apriltag import apriltag
 def remove_duplicate_detections(detections, distance_threshold=20):
     """
     Remove duplicate detections of the same tag at different scales.
-
-    Args:
-        detections: List of AprilTag detections
-        distance_threshold: Maximum distance between centers to consider duplicates
-
-    Returns:
-        List of unique detections (keeping the one with best hamming score)
     """
     if len(detections) == 0:
         return []
@@ -52,15 +45,6 @@ def remove_duplicate_detections(detections, distance_threshold=20):
 def frame_processing_scale(gray_image, scale, use_clahe=True, use_morphology=False):
     """
     Process frame at a specific scale with optional enhancements.
-
-    Args:
-        gray_image: Grayscale input image
-        scale: Scale factor for resizing
-        use_clahe: Whether to apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        use_morphology: Whether to apply morphological operations
-
-    Returns:
-        Processed image at the specified scale
     """
     image = cv2.resize(gray_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
 
@@ -75,43 +59,10 @@ def frame_processing_scale(gray_image, scale, use_clahe=True, use_morphology=Fal
     return image
 
 
-def preprocess_image(color_image, scale=2.0, use_clahe=True):
-    """
-    Preprocess color image for AprilTag detection.
-
-    Args:
-        color_image: Input BGR color image
-        scale: Scale factor for resizing
-        use_clahe: Whether to apply CLAHE
-
-    Returns:
-        Tuple of (processed_image, scale)
-    """
-    image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-    image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
-
-    if use_clahe:
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        image = clahe.apply(image)
-
-    return image, scale
-
-
 def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5],
                                  use_clahe=True, use_morphology=False):
     """
     Detect markers at multiple scales and combine results.
-
-    Args:
-        frame: Input BGR color image
-        detector: AprilTag detector instance
-        scales: List of scale factors to try
-        use_clahe: Whether to apply CLAHE
-        use_morphology: Whether to apply morphological operations
-
-    Returns:
-        Tuple of (all_detections, num_detections) where all_detections is a list
-        of unique detections with coordinates adjusted to original scale
     """
     gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     all_detections = []
@@ -136,14 +87,6 @@ def multi_scale_marker_detection(frame, detector, scales=[1.5, 2.0, 2.5],
 def draw_detections(color_image, detections, scale=1.0):
     """
     Draw bounding boxes and tag IDs on the color image.
-
-    Args:
-        color_image: Original BGR color image
-        detections: List of AprilTag detections
-        scale: Scale factor used during preprocessing (to adjust coordinates)
-
-    Returns:
-        Image with detections drawn
     """
     vis_image = color_image.copy()
 
@@ -178,38 +121,6 @@ def draw_detections(color_image, detections, scale=1.0):
         )
 
     return vis_image
-
-
-def marker_detection(frame, detector, multi_scale=True, scales=[1.5, 2.0, 2.5],
-                     use_clahe=True, use_morphology=False):
-    """
-    Main marker detection function with optional multi-scale detection.
-
-    Args:
-        frame: Input BGR color image
-        detector: AprilTag detector instance
-        multi_scale: Whether to use multi-scale detection
-        scales: List of scale factors for multi-scale detection
-        use_clahe: Whether to apply CLAHE
-        use_morphology: Whether to apply morphological operations
-
-    Returns:
-        Tuple of (detections, num_detections)
-    """
-    if multi_scale:
-        detections, num_detections = multi_scale_marker_detection(
-            frame, detector, scales, use_clahe, use_morphology
-        )
-    else:
-        processed_frame, scale = preprocess_image(frame, scale=2.0, use_clahe=use_clahe)
-        detections = detector.detect(processed_frame)
-        # Adjust coordinates back to original scale
-        for det in detections:
-            det['center'] = (det['center'][0] / scale, det['center'][1] / scale)
-            det['lb-rb-rt-lt'] = [(x / scale, y / scale) for x, y in det['lb-rb-rt-lt']]
-        num_detections = len(detections)
-
-    return detections, num_detections
 
 
 def create_detector(tag_family="tagStandard41h12"):

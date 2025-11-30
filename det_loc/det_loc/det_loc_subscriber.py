@@ -79,6 +79,14 @@ class ImageSubscriber(Node):
         self.scanning_timer = None
         self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
 
+        # Detection loss tracking - only rescan after consecutive failures
+        self.no_detection_count = 0
+        self.no_detection_threshold = 15
+
+        # Pan drift threshold - trigger rescan if camera drifts too far from best view position
+        self.pan_drift_threshold = 1.0  # radians (~57 degrees) of drift from reference
+        self.reference_pan_position = 0.0  # Set after each scan completes
+
         self.angular_speed_list = []
         self.detector = apriltag("tagStandard41h12")
         self.tag_size = 0.160  # meters
@@ -102,6 +110,7 @@ class ImageSubscriber(Node):
 
         self.is_scanning = True
         self.scanning_initialized = True
+        self.no_detection_count = 0  # Reset detection loss counter
 
         self.view_tracker.initial_scanning()
         self.scanning_timer = self.create_timer(0.1, self.execute_scan_step)
@@ -132,19 +141,25 @@ class ImageSubscriber(Node):
         best_view = self.view_tracker.get_best_view()
         if best_view:
             self.get_logger().info(
-                "Scan complete | Best view: "
+                f"Scan complete | Best view: "
                 f"Pan={best_view['pan_position']:.3f}rad, "
                 f"Det={best_view['num_detections']:.1f}, "
-                f"CenterErr={best_view['center_error']:.1f}px "
+                f"CenterErr={best_view['center_error']:.1f}px, "
+                f"Score={self.view_tracker.best_view_score:.3f}"
             )
 
             # Move to best view and enable tracking
             self.view_tracker.move_to_best_view()
             self.view_tracker.enable_tracking()
-            self.get_logger().info("Moved to best view. Tracking enabled.")
+
+            # Store reference position for drift detection
+            self.reference_pan_position = best_view['pan_position']
+            self.get_logger().info(
+                f"Moved to best view (ref={self.reference_pan_position:.3f}rad). Tracking enabled."
+            )
         else:
-            self.view_tracker.initial_scanning()
-            self.get_logger().warn("Scan complete. No valid views found!")
+            # No valid views found - listener_callback will trigger a new scan
+            self.get_logger().warn("Scan complete. No valid views found! Will rescan...")
 
     def listener_callback(self, data):
         """Converts received images to cv2 images and performs localization"""
@@ -159,7 +174,7 @@ class ImageSubscriber(Node):
         detections = multi_scale_marker_detection(
             frame,
             self.detector,
-            scales=[1.5, 2.0, 2.5],
+            scales=[1.5, 2.5, 3.5, 4.5],
             use_clahe=True,
             use_morphology=False,
         )
@@ -174,6 +189,25 @@ class ImageSubscriber(Node):
 
         # 5. Perform localization with new dictionary-based system
         if len(detections) >= 2 and not self.is_scanning:
+            # Reset no-detection counter when we have good detections
+            self.no_detection_count = 0
+
+            # Dynamic tracking: adjust pan to keep tags centered
+            adjusted, error_x, adjustment = self.view_tracker.check_and_adjust_tracking(detections)
+            if adjusted:
+                self.get_logger().info(
+                    f"Tracking adjustment: error={error_x:.1f}px, adj={adjustment:.4f}rad"
+                )
+
+            # Check if pan has drifted too far from reference position - trigger reorientation scan
+            current_pan = self.view_tracker.pan_controller.get_pan_position()
+            drift_from_reference = abs(current_pan - self.reference_pan_position)
+            if drift_from_reference > self.pan_drift_threshold:
+                self.get_logger().info("Pan drift exceeded threshold triggering reorientation scan")
+                self.view_tracker.disable_tracking()
+                self.start_initial_scan()
+                return  # Exit early
+
             # Measure distances and get detailed detection info
             distance_frame, detections_info, rvecs = distance_measure(
                 vis_image,
@@ -219,9 +253,16 @@ class ImageSubscriber(Node):
         else: # not enough tags found or currently scanning
             if self.is_scanning and self.scanning_initialized: # continuing to scan
                 self.publish_forward_speed(0.1)
-            else: # starting new scan
-                self.get_logger().info("Not enough tags found, starting new scan")
-                self.start_initial_scan()
+            else: # not currently scanning - check if we should start one
+                self.no_detection_count += 1
+
+                if self.no_detection_count >= self.no_detection_threshold:
+                    self.get_logger().info(
+                        f"No detections for {self.no_detection_count} frames - starting new scan"
+                    )
+                    self.no_detection_count = 0  # Reset counter
+                    self.start_initial_scan()
+
                 self.publish_forward_speed(0.1)
 
 

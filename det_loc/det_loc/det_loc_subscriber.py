@@ -227,7 +227,7 @@ class ImageSubscriber(Node):
 
         if self.is_scanning and self.scanning_initialized:
             current_pan = self.view_tracker.pan_controller.get_pan_position()
-            
+
             # During smart rescan: stop immediately if we find 2+ tags
             if self.view_tracker.is_smart_rescan_active() and len(detections) >= 2:
                 self.get_logger().info(
@@ -236,7 +236,7 @@ class ImageSubscriber(Node):
                 self.view_tracker.finish_smart_rescan(found_tags=True)
                 self.finish_smart_rescan(found_tags=True)
                 return  # Exit early, next frame will use tracking
-            
+
             # For full scan: update scan data
             if not self.view_tracker.is_smart_rescan_active():
                 self.view_tracker.update_scan_data(detections, current_pan)
@@ -316,7 +316,7 @@ class ImageSubscriber(Node):
 
                 if self.no_detection_count >= self.no_detection_threshold:
                     self.no_detection_count = 0  # Reset counter
-                    
+
                     if self.first_scan:
                         # First scan - do full sweep
                         self.get_logger().info(

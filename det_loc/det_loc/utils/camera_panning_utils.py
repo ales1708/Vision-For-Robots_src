@@ -64,18 +64,18 @@ class Pan_Controller:
         self.passed_center = False
 
     def smart_scan_step(self):
-        """Execute one step of smart scan. 
+        """Execute one step of smart scan.
         Moves towards center first, then keeps panning back and forth
         until tags are found. Never stops on its own.
         """
         self.pan_position += self.pan_step * self.pan_direction
-        
+
         # Check if we've crossed center
         if not self.passed_center:
             if (self.pan_direction == -1 and self.pan_position <= 0) or \
                (self.pan_direction == 1 and self.pan_position >= 0):
                 self.passed_center = True
-        
+
         # Check bounds and reverse direction (keep oscillating)
         if self.pan_position >= self.pan_max:
             self.pan_direction = -1
@@ -83,7 +83,7 @@ class Pan_Controller:
         elif self.pan_position <= self.pan_min:
             self.pan_direction = 1
             self.pan_position = self.pan_min
-        
+
         self.publish_pan_position()
         # Never returns True - keeps scanning until tags found externally
         return False
@@ -129,11 +129,11 @@ class ViewTracker:
 
         self.scan_data = []  # List of dicts with {pan_position, num_detections, center_error}
         self.current_scan_accumulator = []  # Accumulate data for current pan position
-        self.frames_per_position = 1  # Number of frames to average per position
+        self.frames_per_position = 10  # Number of frames to average per position
 
         # Tracking state management
         self.tracking_enabled = False
-        self.center_error_threshold = 60.0  # pixels from center before adjustment
+        self.center_error_threshold = 30.0  # pixels from center before adjustment
 
     def initial_scanning(self):
         """Reset and start full scanning operation"""
@@ -218,14 +218,17 @@ class ViewTracker:
         if not self.current_scan_accumulator:
             return None
 
-        print("before avg_pan")
         avg_pan = np.mean([d['pan_position'] for d in self.current_scan_accumulator])
-        print("before avg_detections")
         avg_detections = np.mean([d['num_detections'] for d in self.current_scan_accumulator])
-        print("before avg_center")
-        avg_center_error = np.mean([d['center_error'] for d in self.current_scan_accumulator if d['center_error'] != float('inf')])
 
-        if np.isnan(avg_center_error):
+        # Filter out inf values before averaging to avoid numpy warnings
+        valid_center_errors = [d['center_error'] for d in self.current_scan_accumulator
+                               if d['center_error'] != float('inf')]
+
+        if valid_center_errors:
+            avg_center_error = np.mean(valid_center_errors)
+        else:
+            # No valid center errors (all frames had no detections)
             avg_center_error = float('inf')
 
         return {

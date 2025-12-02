@@ -5,8 +5,8 @@ class Pan_Controller:
     def __init__(self, pan_publisher):
         self.pan_position = 0.0
         self.pan_step = 0.05  # Smaller step for slower, more accurate scanning
-        self.pan_min = -1.5
-        self.pan_max = 1.5
+        self.pan_min = -1.25
+        self.pan_max = 1.25
         self.pan_direction = 1
         self.pan_publisher = pan_publisher
         self.pan_max_reached = False
@@ -135,8 +135,11 @@ class ViewTracker:
         if not self.current_scan_accumulator:
             return None
 
+        print("before avg_pan")
         avg_pan = np.mean([d['pan_position'] for d in self.current_scan_accumulator])
+        print("before avg_detections")
         avg_detections = np.mean([d['num_detections'] for d in self.current_scan_accumulator])
+        print("before avg_center")
         avg_center_error = np.mean([d['center_error'] for d in self.current_scan_accumulator if d['center_error'] != float('inf')])
 
         if np.isnan(avg_center_error):

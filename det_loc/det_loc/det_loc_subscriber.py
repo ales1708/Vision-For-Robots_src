@@ -78,6 +78,7 @@ class ImageSubscriber(Node):
         self.scanning_initialized = False
         self.scanning_timer = None
         self.initial_timer = self.create_timer(1.0, self.start_initial_scan)
+        self.first_scan = True
 
         # Detection loss tracking - only rescan after consecutive failures
         self.no_detection_count = 0
@@ -133,6 +134,7 @@ class ImageSubscriber(Node):
         """Finish the scanning operation and report results."""
         self.is_scanning = False
         self.scanning_initialized = False
+        self.first_scan = False
 
         if self.scanning_timer:
             self.destroy_timer(self.scanning_timer)
@@ -249,10 +251,13 @@ class ImageSubscriber(Node):
                 self.rover_movement()
             else: # not enough valid tags found
                 self.get_logger().info("Not enough valid tags found")
-                self.publish_forward_speed(0.2)
+                # self.publish_forward_speed(0.2)
         else: # not enough tags found or currently scanning
             if self.is_scanning and self.scanning_initialized: # continuing to scan
-                self.publish_forward_speed(0.1)
+                if not self.first_scan:
+                    self.publish_forward_speed(0.05)
+                else:
+                    self.publish_forward_speed(0.0)
             else: # not currently scanning - check if we should start one
                 self.no_detection_count += 1
 
@@ -262,8 +267,6 @@ class ImageSubscriber(Node):
                     )
                     self.no_detection_count = 0  # Reset counter
                     self.start_initial_scan()
-
-                self.publish_forward_speed(0.1)
 
 
     def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
@@ -400,7 +403,7 @@ class ImageSubscriber(Node):
             )
 
             # Set movement commands
-            if distance_to_target < 0.05:
+            if distance_to_target < 0.15:
                 # Reached target
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0

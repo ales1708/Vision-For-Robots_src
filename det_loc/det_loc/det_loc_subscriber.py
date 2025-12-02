@@ -106,8 +106,8 @@ class ImageSubscriber(Node):
         self.cmd_vel_pub.publish(twist)
 
     def start_initial_scan(self):
-        """Initialize the scanning operation."""
-        self.get_logger().info("Starting initial scan...")
+        """Initialize the full scanning operation (used for first scan)."""
+        self.get_logger().info("Starting initial full scan...")
 
         self.is_scanning = True
         self.scanning_initialized = True
@@ -120,18 +120,37 @@ class ImageSubscriber(Node):
             self.destroy_timer(self.initial_timer)
             self.initial_timer = None
 
+    def start_smart_rescan(self):
+        """Start smart rescan - moves from current position towards center,
+        stops when 2+ tags are found."""
+        self.get_logger().info(
+            f"Starting smart rescan from pan={self.view_tracker.pan_controller.get_pan_position():.2f}rad"
+        )
+
+        self.is_scanning = True
+        self.scanning_initialized = True
+        self.no_detection_count = 0
+
+        self.view_tracker.start_smart_rescan()
+        self.scanning_timer = self.create_timer(0.1, self.execute_smart_rescan_step)
 
     def execute_scan_step(self):
-        """Execute a single step of the scanning operation."""
+        """Execute a single step of the full scanning operation."""
         if self.view_tracker.is_scanning_complete():
             self.finish_scanning()
             return
 
         self.view_tracker.pan_controller.scanning_step()
 
+    def execute_smart_rescan_step(self):
+        """Execute a single step of smart rescan.
+        Keeps panning back and forth until tags are found.
+        """
+        self.view_tracker.smart_rescan_step()
+
 
     def finish_scanning(self):
-        """Finish the scanning operation and report results."""
+        """Finish the full scanning operation and report results."""
         self.is_scanning = False
         self.scanning_initialized = False
         self.first_scan = False
@@ -163,6 +182,27 @@ class ImageSubscriber(Node):
             # No valid views found - listener_callback will trigger a new scan
             self.get_logger().warn("Scan complete. No valid views found! Will rescan...")
 
+    def finish_smart_rescan(self, found_tags=False):
+        """Finish the smart rescan operation."""
+        self.is_scanning = False
+        self.scanning_initialized = False
+
+        if self.scanning_timer:
+            self.destroy_timer(self.scanning_timer)
+            self.scanning_timer = None
+
+        if found_tags:
+            # Stay at current position and enable tracking
+            current_pan = self.view_tracker.pan_controller.get_pan_position()
+            self.reference_pan_position = current_pan
+            self.view_tracker.enable_tracking()
+            self.get_logger().info(
+                f"Smart rescan found tags at pan={current_pan:.3f}rad. Tracking enabled."
+            )
+        else:
+            # Didn't find tags - will trigger full rescan from listener_callback
+            self.get_logger().warn("Smart rescan failed to find tags. Will trigger full rescan...")
+
     def listener_callback(self, data):
         """Converts received images to cv2 images and performs localization"""
         # 1. Convert to OpenCV
@@ -187,7 +227,19 @@ class ImageSubscriber(Node):
 
         if self.is_scanning and self.scanning_initialized:
             current_pan = self.view_tracker.pan_controller.get_pan_position()
-            self.view_tracker.update_scan_data(detections, current_pan)
+            
+            # During smart rescan: stop immediately if we find 2+ tags
+            if self.view_tracker.is_smart_rescan_active() and len(detections) >= 2:
+                self.get_logger().info(
+                    f"Smart rescan found {len(detections)} tags at pan={current_pan:.2f}rad - stopping"
+                )
+                self.view_tracker.finish_smart_rescan(found_tags=True)
+                self.finish_smart_rescan(found_tags=True)
+                return  # Exit early, next frame will use tracking
+            
+            # For full scan: update scan data
+            if not self.view_tracker.is_smart_rescan_active():
+                self.view_tracker.update_scan_data(detections, current_pan)
 
         # 5. Perform localization with new dictionary-based system
         if len(detections) >= 2 and not self.is_scanning:
@@ -201,13 +253,13 @@ class ImageSubscriber(Node):
                     f"Tracking adjustment: error={error_x:.1f}px, adj={adjustment:.4f}rad"
                 )
 
-            # Check if pan has drifted too far from reference position - trigger reorientation scan
+            # Check if pan has drifted too far from reference position - trigger smart reorientation
             current_pan = self.view_tracker.pan_controller.get_pan_position()
             drift_from_reference = abs(current_pan - self.reference_pan_position)
             if drift_from_reference > self.pan_drift_threshold:
-                self.get_logger().info("Pan drift exceeded threshold triggering reorientation scan")
+                self.get_logger().info("Pan drift exceeded threshold - triggering smart rescan")
                 self.view_tracker.disable_tracking()
-                self.start_initial_scan()
+                self.start_smart_rescan()
                 return  # Exit early
 
             # Measure distances and get detailed detection info
@@ -255,18 +307,28 @@ class ImageSubscriber(Node):
         else: # not enough tags found or currently scanning
             if self.is_scanning and self.scanning_initialized: # continuing to scan
                 if not self.first_scan:
-                    self.publish_forward_speed(0.05)
+                    # self.publish_forward_speed(0.05)
+                    pass
                 else:
                     self.publish_forward_speed(0.0)
             else: # not currently scanning - check if we should start one
                 self.no_detection_count += 1
 
                 if self.no_detection_count >= self.no_detection_threshold:
-                    self.get_logger().info(
-                        f"No detections for {self.no_detection_count} frames - starting new scan"
-                    )
                     self.no_detection_count = 0  # Reset counter
-                    self.start_initial_scan()
+                    
+                    if self.first_scan:
+                        # First scan - do full sweep
+                        self.get_logger().info(
+                            f"No detections for {self.no_detection_threshold} frames - starting full scan"
+                        )
+                        self.start_initial_scan()
+                    else:
+                        # After first scan - use smart rescan (move towards center)
+                        self.get_logger().info(
+                            f"No detections for {self.no_detection_threshold} frames - starting smart rescan"
+                        )
+                        self.start_smart_rescan()
 
 
     def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):

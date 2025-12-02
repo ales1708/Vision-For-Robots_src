@@ -48,6 +48,46 @@ class Pan_Controller:
 
         self.publish_pan_position()
 
+    def start_smart_scan_from_current(self):
+        """Initialize smart scan starting from current position.
+        Sets direction towards center first, then continues scanning.
+        """
+        # Set direction towards center initially
+        if self.pan_position > 0:
+            self.pan_direction = -1  # Move left towards center
+        else:
+            self.pan_direction = 1   # Move right towards center
+
+        self.pan_max_reached = False
+        self.pan_min_reached = False
+        self.scanning_complete = False
+        self.passed_center = False
+
+    def smart_scan_step(self):
+        """Execute one step of smart scan. 
+        Moves towards center first, then keeps panning back and forth
+        until tags are found. Never stops on its own.
+        """
+        self.pan_position += self.pan_step * self.pan_direction
+        
+        # Check if we've crossed center
+        if not self.passed_center:
+            if (self.pan_direction == -1 and self.pan_position <= 0) or \
+               (self.pan_direction == 1 and self.pan_position >= 0):
+                self.passed_center = True
+        
+        # Check bounds and reverse direction (keep oscillating)
+        if self.pan_position >= self.pan_max:
+            self.pan_direction = -1
+            self.pan_position = self.pan_max
+        elif self.pan_position <= self.pan_min:
+            self.pan_direction = 1
+            self.pan_position = self.pan_min
+        
+        self.publish_pan_position()
+        # Never returns True - keeps scanning until tags found externally
+        return False
+
     def adjust_pan_to_center(self, center_error_x, image_center_x):
         """Calculate required pan adjustment to center detected tags
         """
@@ -96,7 +136,7 @@ class ViewTracker:
         self.center_error_threshold = 60.0  # pixels from center before adjustment
 
     def initial_scanning(self):
-        """Reset and start scanning operation"""
+        """Reset and start full scanning operation"""
         self.pan_controller.reset_scanning_position()
         self.scan_data = []
         self.current_scan_accumulator = []
@@ -105,6 +145,49 @@ class ViewTracker:
         self.best_view = None
         self.best_view_score = 0.0
         self.best_view_pan_position = 0.0
+
+        # Smart rescan state
+        self.smart_rescan_active = False
+        self.smart_rescan_complete = False
+
+    def start_smart_rescan(self):
+        """Start smart rescan from current position.
+        Moves towards center first, then continues scanning until tags found.
+        """
+        self.scan_data = []
+        self.current_scan_accumulator = []
+
+        # Reset best view tracking
+        self.best_view = None
+        self.best_view_score = 0.0
+        self.best_view_pan_position = 0.0
+
+        # Activate smart rescan mode
+        self.smart_rescan_active = True
+        self.smart_rescan_complete = False
+
+        # Initialize smart scan from current position
+        self.pan_controller.start_smart_scan_from_current()
+
+    def smart_rescan_step(self):
+        """Execute one step of smart rescan.
+        Returns True if full range covered without finding tags.
+        """
+        return self.pan_controller.smart_scan_step()
+
+    def finish_smart_rescan(self, found_tags=False):
+        """Mark smart rescan as complete."""
+        self.smart_rescan_active = False
+        self.smart_rescan_complete = True
+
+        if found_tags:
+            # Store current position as best view
+            current_pan = self.pan_controller.get_pan_position()
+            self.best_view_pan_position = current_pan
+
+    def is_smart_rescan_active(self):
+        """Check if smart rescan is currently active."""
+        return self.smart_rescan_active
 
     def is_scanning_complete(self):
         """Check if scanning operation is complete"""

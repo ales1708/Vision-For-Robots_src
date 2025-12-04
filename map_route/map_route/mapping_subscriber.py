@@ -6,7 +6,7 @@ from sensor_msgs.msg import JointState
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
-from apriltag import apriltag
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 
 class ImageSubscriber(Node):
@@ -15,16 +15,23 @@ class ImageSubscriber(Node):
 
         self.subscription = self.create_subscription(
             Image,  # use CompressedImage or Image
-            "/image_raw",
+            "/oak/rgb/image_raw",
             self.listener_callback,
             10,
         )
+
+        # self.subscription = self.create_subscription(
+        #     Image,
+        #     "/oak/rgb/image_raw",
+        #     self.listener_callback,
+        #     qos_profile=QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT),
+        # )
 
         self.cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self.joint_pub = self.create_publisher(JointState, "/ugv/joint_states", 10)
         self.br = CvBridge()
         self.last_line = None
-        self.initial_camera_timer = self.create_timer(1.0, self.initial_camera_position)
+        # self.initial_camera_timer = self.create_timer(1.0, self.initial_camera_position)
         self.in_rosbag = True
         self.angular_speed_list = []
 
@@ -36,14 +43,14 @@ class ImageSubscriber(Node):
         msg.position = [0.0, 0.0]  # 0 degrees and 90 degrees in radians
         self.joint_pub.publish(msg)
         self.get_logger().info("Camera turned to preset position.")
-        self.destroy_timer(self.initial_camera_timer)
+        # self.destroy_timer(self.initial_camera_timer)
 
     def listener_callback(self, data):
         """Uses the subscribed camera feed to detect lines and follow them"""
-
-        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8") # for Image
+        frame = self.br.imgmsg_to_cv2(data, desired_encoding="bgr8")  # for Image
         # np_arr = np.frombuffer(data.data, np.uint8)  # for CompressedImage
         # frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # for CompressedImage
+        cv2.imshow("frame", frame)
 
         cv2.waitKey(1)
 

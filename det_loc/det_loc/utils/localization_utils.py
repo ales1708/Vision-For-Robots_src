@@ -6,7 +6,7 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
     """
     Measures the distance to AprilTags and returns detailed detection info.
     Uses the Undistorted Camera Matrix (P) and 0 distortion.
-    
+
     Returns:
         frame: Original frame (unchanged)
         detections_info: List of dicts with {'id': int, 'tvec': np.array, 'distance': float}
@@ -34,7 +34,7 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
 
     detections_info = []
     rvecs = []
-    
+
     for det in results:
         # Get corners from detection
         corners = np.array(det["lb-rb-rt-lt"], dtype=np.float32)
@@ -48,25 +48,21 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
 
             if success:
                 dist = float(np.linalg.norm(tvec))
-                detections_info.append({
-                    'id': det['id'],
-                    'tvec': tvec.flatten(),  # Store as 1D array [x, y, z]
-                    'distance': dist
-                })
+                detections_info.append(
+                    {
+                        "id": det["id"],
+                        "tvec": tvec.flatten(),  # Store as 1D array [x, y, z]
+                        "distance": dist,
+                    }
+                )
                 rvecs.append(rvec)
             else:
-                detections_info.append({
-                    'id': det['id'],
-                    'tvec': None,
-                    'distance': None
-                })
+                detections_info.append(
+                    {"id": det["id"], "tvec": None, "distance": None}
+                )
                 rvecs.append(None)
         else:
-            detections_info.append({
-                'id': det['id'],
-                'tvec': None,
-                'distance': None
-            })
+            detections_info.append({"id": det["id"], "tvec": None, "distance": None})
             rvecs.append(None)
 
     return frame, detections_info, rvecs
@@ -75,10 +71,10 @@ def distance_measure(frame, results, camera_matrix, tag_size, logger):
 def triangulation_3p(detections_info):
     """
     Performs triangulation to compute the position of the Robot with 3 points.
-    
+
     Args:
         detections_info: List of dicts with {'id': int, 'tvec': np.array, 'distance': float}
-    
+
     Returns:
         [x, y]: Robot position
         rotation: Robot yaw angle in radians (normalized to [-π, π])
@@ -101,10 +97,10 @@ def triangulation_3p(detections_info):
 def circular_mean(angles):
     """
     Compute the circular mean of angles to properly average rotations.
-    
+
     Args:
         angles: List of angles in radians
-    
+
     Returns:
         Mean angle in radians, normalized to [-π, π]
     """
@@ -118,10 +114,10 @@ def triangulation_2p(detections_info):
     """
     Performs triangulation to compute the position and orientation of the Robot with 2 points.
     Uses Vector Alignment method for rotation calculation.
-    
+
     Args:
         detections_info: List of 2 dicts with {'id': int, 'tvec': np.array, 'distance': float}
-    
+
     Returns:
         robot_pos: [x, y] position
         robot_yaw: Rotation angle in radians (normalized to [-π, π])
@@ -129,15 +125,15 @@ def triangulation_2p(detections_info):
     # Extract tag IDs and distances
     tag_a = detections_info[0]
     tag_b = detections_info[1]
-    
-    a_d = tag_a['distance']
-    b_d = tag_b['distance']
-    
+
+    a_d = tag_a["distance"]
+    b_d = tag_b["distance"]
+
     if a_d is None or b_d is None:
         return [0.0, 0.0], 0.0
 
     # Get tag positions in world coordinates
-    ax, ay, bx, by = get_tag_positions_from_ids(tag_a['id'], tag_b['id'])
+    ax, ay, bx, by = get_tag_positions_from_ids(tag_a["id"], tag_b["id"])
 
     # Get euclidean distance between a and b
     d = np.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
@@ -170,30 +166,30 @@ def triangulation_2p(detections_info):
         return [0.0, 0.0], 0.0
 
     # ========== VECTOR ALIGNMENT METHOD FOR ROTATION ==========
-    
+
     # 1. Calculate World Vector angle (from Tag A to Tag B in map coordinates)
     world_angle = np.arctan2(by - ay, bx - ax)
-    
+
     # 2. Calculate Camera Vector angle (from Tag A to Tag B in camera frame)
-    tvec_a = tag_a['tvec']
-    tvec_b = tag_b['tvec']
-    
+    tvec_a = tag_a["tvec"]
+    tvec_b = tag_b["tvec"]
+
     if tvec_a is None or tvec_b is None:
         return robot_pos, 0.0
-    
+
     # OpenCV convention: Z is forward, X is right, Y is down
     # Calculate vector from A to B in camera frame
     delta_x_cv = tvec_b[0] - tvec_a[0]  # Right difference
     delta_z_cv = tvec_b[2] - tvec_a[2]  # Forward difference
-    
+
     # For ROS 2D nav: Forward=X, Left=Y
     # So we need: atan2(-ΔX_cv, ΔZ_cv)
     # Negative X because in OpenCV +X is right, but we need left for positive rotation
     camera_angle = np.arctan2(-delta_x_cv, delta_z_cv)
-    
+
     # 3. Calculate Robot Yaw
     robot_yaw = world_angle - camera_angle
-    
+
     # 4. Normalize to [-π, π]
     robot_yaw = normalize_angle(robot_yaw)
 
@@ -203,10 +199,10 @@ def triangulation_2p(detections_info):
 def normalize_angle(angle):
     """
     Normalize angle to [-π, π] range.
-    
+
     Args:
         angle: Angle in radians
-    
+
     Returns:
         Normalized angle in radians
     """
@@ -244,7 +240,7 @@ def get_tag_positions_from_ids(id_a, id_b):
 
     ax, ay = april_tags[id_a]
     bx, by = april_tags[id_b]
-    
+
     return ax, ay, bx, by
 
 
@@ -259,6 +255,7 @@ def get_tag_positions(detections):
 
 
 # ========== KALMAN FILTER (UNCHANGED) ==========
+
 
 class KalmanFilter2D:
     def __init__(self, dt=0.05):

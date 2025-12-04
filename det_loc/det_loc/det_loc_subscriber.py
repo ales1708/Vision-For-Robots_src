@@ -93,6 +93,10 @@ class ImageSubscriber(Node):
         self.tag_size = 0.160  # meters
         self.kf = KalmanFilter2D(dt=0.05)
         self.target = [1.3, 3.0]  # penalty dot
+        # self.target = [0.6, 4.1]  # Goal area corner right
+        # self.target = [0.6, 1.9]  # goal area corner left
+        # self.target = [1.650, 5.0]  # penalty area corner right
+        # self.target = [1.650, 1.0] # penalty area corner left
         self.filtered_pos = [0.0, 0.0]
         self.rotation_degrees = 0.0
 
@@ -148,7 +152,6 @@ class ImageSubscriber(Node):
         """
         self.view_tracker.smart_rescan_step()
 
-
     def finish_scanning(self):
         """Finish the full scanning operation and report results."""
         self.is_scanning = False
@@ -174,13 +177,15 @@ class ImageSubscriber(Node):
             self.view_tracker.enable_tracking()
 
             # Store reference position for drift detection
-            self.reference_pan_position = best_view['pan_position']
+            self.reference_pan_position = best_view["pan_position"]
             self.get_logger().info(
                 f"Moved to best view (ref={self.reference_pan_position:.3f}rad). Tracking enabled."
             )
         else:
             # No valid views found - listener_callback will trigger a new scan
-            self.get_logger().warn("Scan complete. No valid views found! Will rescan...")
+            self.get_logger().warn(
+                "Scan complete. No valid views found! Will rescan..."
+            )
 
     def finish_smart_rescan(self, found_tags=False):
         """Finish the smart rescan operation."""
@@ -201,7 +206,9 @@ class ImageSubscriber(Node):
             )
         else:
             # Didn't find tags - will trigger full rescan from listener_callback
-            self.get_logger().warn("Smart rescan failed to find tags. Will trigger full rescan...")
+            self.get_logger().warn(
+                "Smart rescan failed to find tags. Will trigger full rescan..."
+            )
 
     def listener_callback(self, data):
         """Converts received images to cv2 images and performs localization"""
@@ -247,7 +254,9 @@ class ImageSubscriber(Node):
             self.no_detection_count = 0
 
             # Dynamic tracking: adjust pan to keep tags centered
-            adjusted, error_x, adjustment = self.view_tracker.check_and_adjust_tracking(detections)
+            adjusted, error_x, adjustment = self.view_tracker.check_and_adjust_tracking(
+                detections
+            )
             if adjusted:
                 self.get_logger().info(
                     f"Tracking adjustment: error={error_x:.1f}px, adj={adjustment:.4f}rad"
@@ -257,7 +266,9 @@ class ImageSubscriber(Node):
             current_pan = self.view_tracker.pan_controller.get_pan_position()
             drift_from_reference = abs(current_pan - self.reference_pan_position)
             if drift_from_reference > self.pan_drift_threshold:
-                self.get_logger().info("Pan drift exceeded threshold - triggering smart rescan")
+                self.get_logger().info(
+                    "Pan drift exceeded threshold - triggering smart rescan"
+                )
                 self.view_tracker.disable_tracking()
                 self.start_smart_rescan()
                 return  # Exit early
@@ -273,8 +284,9 @@ class ImageSubscriber(Node):
 
             # 6. Filter out invalid detections
             valid_detections = [
-                d for d in detections_info
-                if d['distance'] is not None and d['tvec'] is not None
+                d
+                for d in detections_info
+                if d["distance"] is not None and d["tvec"] is not None
             ]
 
             if len(valid_detections) >= 2:
@@ -296,22 +308,22 @@ class ImageSubscriber(Node):
                 # 10. Log results
                 self.get_logger().info(
                     f"Position: ({filtered_pos[0]:.3f}, {filtered_pos[1]:.3f}) | "
-                    f"Rotation: {robot_rotation_degrees:.1f}° | "
+                    f"Rotation: {robot_rotation_degrees + self.view_tracker.pan_controller.get_pan_position() * (180.0 / np.pi):.1f}° | "
                     f"Tags: {[d['id'] for d in valid_detections[:2]]}"
                 )
 
                 self.rover_movement()
-            else: # not enough valid tags found
+            else:  # not enough valid tags found
                 self.get_logger().info("Not enough valid tags found")
                 # self.publish_forward_speed(0.2)
-        else: # not enough tags found or currently scanning
-            if self.is_scanning and self.scanning_initialized: # continuing to scan
+        else:  # not enough tags found or currently scanning
+            if self.is_scanning and self.scanning_initialized:  # continuing to scan
                 if not self.first_scan:
                     # self.publish_forward_speed(0.05)
                     pass
                 else:
                     self.publish_forward_speed(0.0)
-            else: # not currently scanning - check if we should start one
+            else:  # not currently scanning - check if we should start one
                 self.no_detection_count += 1
 
                 if self.no_detection_count >= self.no_detection_threshold:
@@ -329,7 +341,6 @@ class ImageSubscriber(Node):
                             f"No detections for {self.no_detection_threshold} frames - starting smart rescan"
                         )
                         self.start_smart_rescan()
-
 
     def oak_callback(self, rgb_msg: CompressedImage, depth_msg: CompressedImage):
         """Converts OAK-D images to cv2 images and performs rover detection."""
@@ -376,7 +387,7 @@ class ImageSubscriber(Node):
             cx = x + w // 2
             cy = y + h // 2
 
-            depth_value = depth_f[cy - 1, cx - 1] / 1000 # from mm to meters
+            depth_value = depth_f[cy - 1, cx - 1] / 1000  # from mm to meters
             depths.append(depth_value)
 
         # visualize bboxes on rgb (optional)
@@ -384,7 +395,13 @@ class ImageSubscriber(Node):
         rgb_img = cv2.imdecode(np_rgb, cv2.IMREAD_COLOR)
         for det in detections:
             x, y, w, h = det
-            cv2.rectangle(rgb_img, (x - w // 2, y - h // 2), (x + w // 2, y + h // 2), (0, 255, 0), 2)
+            cv2.rectangle(
+                rgb_img,
+                (x - w // 2, y - h // 2),
+                (x + w // 2, y + h // 2),
+                (0, 255, 0),
+                2,
+            )
             cv2.circle(rgb_img, (x, y), 5, (255, 0, 0), -1)
 
         self.depth_color = depth_color
@@ -403,20 +420,22 @@ class ImageSubscriber(Node):
         """
         twist = Twist()
 
-        min_distance = 0.3 # for obstacle avoidance
-        image_center_x = 640    # assuming 1280xsomething image
+        min_distance = 0.3  # for obstacle avoidance
+        image_center_x = 640  # assuming 1280xsomething image
         center_zone = 300
         obstacle_detected = False
         steer_direction = 0  # -1: left, 1: right
-
         filtered_pos = self.filtered_pos
-        rotation_degrees = self.rotation_degrees
+        pan_angle_abs = self.view_tracker.pan_controller.get_pan_position()
+        pan_angle_norm = pan_angle_abs * (180.0 / np.pi)
+        rotation_degrees = self.rotation_degrees + pan_angle_norm
+        print(self.rotation_degrees)
+        print(pan_angle_norm)
         target = self.target
 
         # Calculate angle to target
         target_angle = np.arctan2(
-            target[1] - filtered_pos[1],
-            target[0] - filtered_pos[0]
+            target[1] - filtered_pos[1], target[0] - filtered_pos[0]
         )
         target_angle_degrees = np.degrees(target_angle)
 
@@ -425,17 +444,18 @@ class ImageSubscriber(Node):
 
         # Normalize to [-180, 180] degrees
         turn_to_target = (turn_to_target + 180) % 360 - 180
-
         # Calculate distance to target
         distance_to_target = np.sqrt(
-            (filtered_pos[0] - target[0]) ** 2 +
-            (filtered_pos[1] - target[1]) ** 2
+            (filtered_pos[0] - target[0]) ** 2 + (filtered_pos[1] - target[1]) ** 2
         )
         for i, det in enumerate(self.detections):
             x, _, w, _ = det
             depth_val = self.depths[i]
             bbox_center_x = x + w // 2
-            if depth_val < min_distance and abs(bbox_center_x - image_center_x) < center_zone:
+            if (
+                depth_val < min_distance
+                and abs(bbox_center_x - image_center_x) < center_zone
+            ):
                 obstacle_detected = True
                 steer_direction = 1 if bbox_center_x < image_center_x else -1
                 break
@@ -446,7 +466,7 @@ class ImageSubscriber(Node):
             twist.angular.z = 0.5 * steer_direction
         else:
             # Determine speeds based on distance
-            if distance_to_target < 0.2:
+            if distance_to_target < 1.0:
                 speed = 0.1
             else:
                 speed = 0.3
@@ -465,13 +485,13 @@ class ImageSubscriber(Node):
             )
 
             # Set movement commands
-            if distance_to_target < 0.15:
+            if distance_to_target < 0.5:
                 # Reached target
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
             elif rotate != 0:
                 # Need to turn first
-                twist.linear.x = speed * 0.5 # slower when turning
+                twist.linear.x = speed * 0.5  # slower when turning
                 twist.angular.z = rotate
             else:
                 # Move forward
